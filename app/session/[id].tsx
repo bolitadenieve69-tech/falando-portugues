@@ -1,0 +1,460 @@
+import { useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
+import { useVoiceSession } from '../../src/features/session/hooks/useVoiceSession';
+import { useNetworkStatus } from '../../src/features/session/hooks/useNetworkStatus';
+import { TappableText } from '../../src/features/session/components/TappableText';
+import type { SessionConfig } from '../../src/features/session/types';
+
+const WAVEFORM_COUNT = 11;
+
+function WaveformBar({ delay, active }: { delay: number; active: boolean }) {
+  const anim = useRef(new Animated.Value(10)).current;
+  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    if (active) {
+      loopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, {
+            toValue: 20 + Math.random() * 60,
+            duration: 500 + Math.random() * 300,
+            delay,
+            useNativeDriver: false,
+          }),
+          Animated.timing(anim, {
+            toValue: 10,
+            duration: 500,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      loopRef.current.start();
+    } else {
+      loopRef.current?.stop();
+      Animated.timing(anim, {
+        toValue: 10,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+    return () => loopRef.current?.stop();
+  }, [active]);
+
+  return <Animated.View style={[styles.waveBar, { height: anim }]} />;
+}
+
+export default function SessionScreen() {
+  const { level = 'B1', topic = 'livre' } = useLocalSearchParams<{
+    level: string;
+    topic: string;
+  }>();
+
+  const { status, transcript, startSession, endSession, toggleMute, isMuted, error } =
+    useVoiceSession();
+  const { isOnline } = useNetworkStatus();
+
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Auto-start session on mount
+  useEffect(() => {
+    const config: SessionConfig = { level: level as any, topic: topic as any };
+    startSession(config);
+    return () => { endSession(); };
+  }, []);
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    if (transcript.length > 0) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }, [transcript.length]);
+
+  async function handleEndCall() {
+    await endSession();
+    router.back();
+  }
+
+  const isActive = status === 'active';
+  const isConnecting = status === 'connecting';
+
+  return (
+    <View style={styles.root}>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={handleEndCall} style={styles.backButton} hitSlop={8}>
+              <MaterialCommunityIcons name="arrow-left" size={24} color={Colors.onSurface + 'B3'} />
+            </TouchableOpacity>
+            {isConnecting ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <View style={styles.statusDot} />
+            )}
+            <Text style={styles.headerTitle}>
+              {isConnecting ? 'A ligar...' : 'A conversar...'}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="phone-hangup" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+
+      {!isOnline && (
+        <View style={styles.offlineBanner}>
+          <MaterialCommunityIcons name="wifi-off" size={16} color={Colors.onErrorContainer} />
+          <Text style={styles.offlineText}>Sem ligação ao servidor</Text>
+        </View>
+      )}
+      {error && (
+        <View style={styles.errorBanner}>
+          <MaterialCommunityIcons name="alert-circle" size={16} color={Colors.error} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Waveform + Tutor */}
+        <View style={styles.voiceSection}>
+          <View style={styles.waveform}>
+            {Array.from({ length: WAVEFORM_COUNT }).map((_, i) => (
+              <WaveformBar key={i} delay={i * 80} active={isActive} />
+            ))}
+          </View>
+
+          <View style={styles.tutorInfo}>
+            <View style={styles.tutorAvatar}>
+              <MaterialCommunityIcons name="account-voice" size={36} color={Colors.primary} />
+            </View>
+            <Text style={styles.speakerLabel}>A FALAR</Text>
+            <Text style={styles.tutorName}>Tutor Ricardo</Text>
+          </View>
+        </View>
+
+        {/* Transcript */}
+        {transcript.length === 0 && isActive && (
+          <Text style={styles.hint}>Comece a falar em Português...</Text>
+        )}
+
+        <View style={styles.transcript}>
+          {transcript.map((entry) =>
+            entry.speaker === 'tutor' ? (
+              <View key={entry.id} style={styles.tutorBubbleWrap}>
+                <View style={styles.tutorBubbleHeader}>
+                  <View style={styles.ptFlag}>
+                    <View style={[styles.flagStripe, { backgroundColor: '#006600' }]} />
+                    <View style={[styles.flagStripe, { backgroundColor: '#fff' }]} />
+                    <View style={[styles.flagStripe, { backgroundColor: '#FF0000' }]} />
+                  </View>
+                  <Text style={styles.bubbleSpeakerLabel}>TUTOR</Text>
+                </View>
+                <View style={styles.tutorBubble}>
+                  <TappableText text={entry.text} style={styles.bubbleText} />
+                </View>
+              </View>
+            ) : (
+              <View key={entry.id} style={styles.userBubbleWrap}>
+                <View style={styles.userBubbleHeader}>
+                  <Text style={styles.bubbleSpeakerLabel}>VOCÊ</Text>
+                  <MaterialCommunityIcons name="check-circle" size={12} color={Colors.primary} />
+                </View>
+                <View style={styles.userBubble}>
+                  <Text style={styles.userBubbleText}>{entry.text}</Text>
+                </View>
+                {entry.hasCorrection && (
+                  <View style={styles.correctionRow}>
+                    <MaterialCommunityIcons name="auto-fix" size={14} color={Colors.tertiary} />
+                    <Text style={styles.correctionText}>Correção disponível</Text>
+                  </View>
+                )}
+              </View>
+            )
+          )}
+        </View>
+
+        <View style={{ height: 120 }} />
+      </ScrollView>
+
+      {/* Bottom Controls */}
+      <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
+        <TouchableOpacity style={styles.controlButton} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="keyboard" size={24} color={Colors.onSurface + '80'} />
+          <Text style={styles.controlLabel}>Escrever</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.micButtonActive, isMuted && styles.micButtonMuted]}
+          onPress={toggleMute}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons
+            name={isMuted ? 'microphone-off' : 'microphone'}
+            size={28}
+            color={isMuted ? Colors.onSurface + '80' : Colors.primary}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.controlButton} onPress={toggleMute} activeOpacity={0.7}>
+          <MaterialCommunityIcons
+            name={isMuted ? 'microphone' : 'microphone-off'}
+            size={24}
+            color={Colors.onSurface + '80'}
+          />
+          <Text style={styles.controlLabel}>{isMuted ? 'Ativar' : 'Mudo'}</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: Colors.background },
+  safeArea: { backgroundColor: Colors.background + 'CC' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  backButton: { padding: 4 },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  headerTitle: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 18,
+    color: Colors.primary,
+    letterSpacing: -0.3,
+  },
+  endCallButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.tertiaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.tertiaryContainer,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  offlineText: {
+    fontFamily: Typography.label,
+    fontSize: 13,
+    color: Colors.onErrorContainer,
+    flex: 1,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.errorContainer,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  errorText: {
+    fontFamily: Typography.label,
+    fontSize: 13,
+    color: Colors.onErrorContainer,
+    flex: 1,
+  },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    alignItems: 'center',
+  },
+  hint: {
+    fontFamily: Typography.label,
+    fontSize: 13,
+    color: Colors.onSurfaceVariant + '80',
+    letterSpacing: 1,
+    marginVertical: Spacing.xl,
+  },
+
+  // Waveform
+  voiceSection: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  waveform: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 100,
+    gap: 4,
+    marginBottom: Spacing.xl,
+  },
+  waveBar: {
+    width: 5,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  tutorInfo: { alignItems: 'center', gap: Spacing.sm },
+  tutorAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surfaceContainerHighest,
+    borderWidth: 2,
+    borderColor: Colors.outlineVariant + '33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  speakerLabel: {
+    fontFamily: Typography.label,
+    fontSize: 10,
+    color: Colors.primary + 'B3',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  tutorName: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 20,
+    color: Colors.onSurface,
+  },
+
+  // Transcript
+  transcript: { width: '100%', gap: Spacing.xl },
+  tutorBubbleWrap: { alignItems: 'flex-start', maxWidth: '85%' },
+  tutorBubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  ptFlag: {
+    flexDirection: 'row',
+    width: 16,
+    height: 12,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  flagStripe: { flex: 1, height: '100%' },
+  bubbleSpeakerLabel: {
+    fontFamily: Typography.label,
+    fontSize: 10,
+    color: Colors.onSurfaceVariant,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  tutorBubble: {
+    backgroundColor: Colors.surfaceContainerLow,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopRightRadius: BorderRadius.md,
+    borderBottomRightRadius: BorderRadius.md,
+    borderBottomLeftRadius: BorderRadius.md,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.primaryContainer,
+  },
+  bubbleText: {
+    fontFamily: Typography.body,
+    fontSize: 15,
+    color: Colors.onSurface,
+    lineHeight: 22,
+  },
+  userBubbleWrap: {
+    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
+    maxWidth: '85%',
+  },
+  userBubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  userBubble: {
+    backgroundColor: Colors.primaryContainer,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopLeftRadius: BorderRadius.md,
+    borderBottomLeftRadius: BorderRadius.md,
+    borderBottomRightRadius: BorderRadius.md,
+  },
+  userBubbleText: {
+    fontFamily: Typography.body,
+    fontSize: 15,
+    color: Colors.onPrimaryContainer,
+    lineHeight: 22,
+  },
+  correctionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  correctionText: {
+    fontFamily: Typography.label,
+    fontSize: 12,
+    color: Colors.tertiary + 'E6',
+    fontStyle: 'italic',
+  },
+
+  // Bottom bar
+  bottomBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.background + 'E6',
+  },
+  controlButton: {
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    gap: 4,
+  },
+  controlLabel: {
+    fontFamily: Typography.body,
+    fontSize: 10,
+    color: Colors.onSurface + '80',
+    letterSpacing: 1,
+  },
+  micButtonActive: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.primaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primaryContainer,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  micButtonMuted: {
+    backgroundColor: Colors.surfaceContainerHighest,
+    shadowOpacity: 0,
+  },
+});

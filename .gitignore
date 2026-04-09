@@ -30,8 +30,18 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files — NEVER commit secrets
+.env
 .env*.local
+backend/.env
+mobile/.env
+
+# Python virtualenv
+luso_tutor/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
 
 # typescript
 *.tsbuildinfo
