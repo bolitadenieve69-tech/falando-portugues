@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useVoicePreview } from '../../src/features/settings/hooks/useVoicePreview';
 import {
   View,
   Text,
@@ -6,12 +7,16 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel } from '../../src/features/session/types';
 import { loadPreferences, savePreferences } from '../../src/services/preferences';
+import { clearHistory } from '../../src/services/history';
+import { clearAuthData } from '../../src/features/auth/services/authService';
 
 const LEVELS: { key: UserLevel; label: string; desc: string }[] = [
   { key: 'A1', label: 'A1', desc: 'Iniciante' },
@@ -31,15 +36,17 @@ interface TutorVoice {
 }
 
 const TUTOR_VOICES: TutorVoice[] = [
+  { id: 'tiago', name: 'Tiago', city: 'Lisboa', style: 'Conversacional', voiceId: 'c0rzOw18hxEhaSybUod2' },
   { id: 'joana', name: 'Joana', city: 'Lisboa', style: 'Natural & Clara', voiceId: 'nJ5NFqyKb8kn9JBPmo6i' },
   { id: 'patricio', name: 'Patrício', city: 'Porto', style: 'Profunda & Calma', voiceId: 'DMcOknq8n1B6XshFIJKJ' },
 ];
 
 export default function SettingsScreen() {
   const [level, setLevel] = useState<UserLevel>('B1');
-  const [selectedVoice, setSelectedVoice] = useState('patricio');
+  const [selectedVoice, setSelectedVoice] = useState('tiago');
   const [showTranscript, setShowTranscript] = useState(true);
   const [autoCorrections, setAutoCorrections] = useState(true);
+  const { playingId, play } = useVoicePreview();
 
   useEffect(() => {
     loadPreferences().then((prefs) => {
@@ -54,6 +61,45 @@ export default function SettingsScreen() {
   const persist = useCallback((patch: Partial<{ level: UserLevel; voiceId: string; showTranscript: boolean; autoCorrections: boolean }>) => {
     loadPreferences().then((prefs) => savePreferences({ ...prefs, ...patch }));
   }, []);
+
+  const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL ?? 'https://falando-portugues.app/privacy';
+
+  function handlePrivacyPolicy() {
+    Linking.openURL(PRIVACY_URL).catch(() =>
+      Alert.alert('Erro', 'Não foi possível abrir a página de privacidade.')
+    );
+  }
+
+  function handleLogout() {
+    Alert.alert(
+      'Terminar Sessão',
+      'Isto irá apagar todo o historial e repor as preferências. Tens a certeza?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Apagar tudo',
+          style: 'destructive',
+          onPress: async () => {
+            await Promise.all([
+              clearHistory(),
+              clearAuthData(),
+              savePreferences({
+                level: 'B1',
+                defaultTopic: null,
+                voiceId: 'c0rzOw18hxEhaSybUod2',
+                showTranscript: true,
+                autoCorrections: true,
+              }),
+            ]);
+            setLevel('B1');
+            setSelectedVoice('tiago');
+            setShowTranscript(true);
+            setAutoCorrections(true);
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -175,9 +221,10 @@ export default function SettingsScreen() {
                     selected && styles.playButtonSelected,
                   ]}
                   hitSlop={8}
+                  onPress={() => play(voice.voiceId)}
                 >
                   <MaterialCommunityIcons
-                    name="play"
+                    name={playingId === voice.voiceId ? 'stop' : 'play'}
                     size={20}
                     color={selected ? Colors.onPrimaryContainer : Colors.primary}
                   />
@@ -252,7 +299,7 @@ export default function SettingsScreen() {
             <Text style={styles.prefLabel}>Versão da App</Text>
             <Text style={styles.prefValue}>1.0.0</Text>
           </View>
-          <TouchableOpacity style={styles.prefRow} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.prefRow} activeOpacity={0.7} onPress={handlePrivacyPolicy}>
             <MaterialCommunityIcons
               name="shield-account-outline"
               size={22}
@@ -267,7 +314,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7} onPress={handleLogout}>
           <Text style={styles.logoutText}>TERMINAR SESSÃO</Text>
         </TouchableOpacity>
 

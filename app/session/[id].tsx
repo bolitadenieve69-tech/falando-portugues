@@ -1,13 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Animated,
   ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { DebugPanel } from '../../src/features/debug/DebugPanel';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,7 +20,9 @@ import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/t
 import { useVoiceSession } from '../../src/features/session/hooks/useVoiceSession';
 import { useNetworkStatus } from '../../src/features/session/hooks/useNetworkStatus';
 import { TappableText } from '../../src/features/session/components/TappableText';
+import { loadPreferences } from '../../src/services/preferences';
 import type { SessionConfig } from '../../src/features/session/types';
+import type { UserPreferences } from '../../src/services/preferences';
 
 const WAVEFORM_COUNT = 11;
 
@@ -61,8 +68,18 @@ export default function SessionScreen() {
     topic: string;
   }>();
 
-  const { status, transcript, startSession, endSession, toggleMute, isMuted, error } =
-    useVoiceSession();
+  const {
+    status,
+    transcript,
+    startSession,
+    endSession,
+    toggleMute,
+    sendTextMessage,
+    isMuted,
+    isUserSpeaking,
+    tutorName,
+    error,
+  } = useVoiceSession();
   const { isOnline } = useNetworkStatus();
 
   const scrollRef = useRef<ScrollView>(null);
@@ -86,11 +103,36 @@ export default function SessionScreen() {
     router.back();
   }
 
+  const [debugVisible, setDebugVisible] = useState(false);
+  const [inputVisible, setInputVisible] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const inputRef = useRef<TextInput>(null);
+
+  function handleSendText() {
+    if (!inputText.trim()) return;
+    sendTextMessage(inputText);
+    setInputText('');
+    setInputVisible(false);
+  }
+  const [prefs, setPrefs] = useState<Pick<UserPreferences, 'showTranscript' | 'autoCorrections'>>({
+    showTranscript: true,
+    autoCorrections: true,
+  });
+
+  useEffect(() => {
+    loadPreferences().then((p) =>
+      setPrefs({ showTranscript: p.showTranscript, autoCorrections: p.autoCorrections })
+    );
+  }, []);
+
   const isActive = status === 'active';
   const isConnecting = status === 'connecting';
+  const waveformActive = isActive && !isMuted;
 
   return (
     <View style={styles.root}>
+      <DebugPanel visible={debugVisible} onClose={() => setDebugVisible(false)} />
+
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -102,9 +144,12 @@ export default function SessionScreen() {
             ) : (
               <View style={styles.statusDot} />
             )}
-            <Text style={styles.headerTitle}>
-              {isConnecting ? 'A ligar...' : 'A conversar...'}
-            </Text>
+            {/* Long-press the title to open the debug panel */}
+            <TouchableWithoutFeedback onLongPress={() => setDebugVisible(true)} delayLongPress={800}>
+              <Text style={styles.headerTitle}>
+                {isConnecting ? 'A ligar...' : 'A conversar...'}
+              </Text>
+            </TouchableWithoutFeedback>
           </View>
           <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall} activeOpacity={0.8}>
             <MaterialCommunityIcons name="phone-hangup" size={22} color="#fff" />
@@ -131,21 +176,31 @@ export default function SessionScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Waveform + Tutor */}
+        {/* Waveform + speaker info */}
         <View style={styles.voiceSection}>
           <View style={styles.waveform}>
             {Array.from({ length: WAVEFORM_COUNT }).map((_, i) => (
-              <WaveformBar key={i} delay={i * 80} active={isActive} />
+              <WaveformBar key={i} delay={i * 80} active={waveformActive} />
             ))}
           </View>
 
-          <View style={styles.tutorInfo}>
-            <View style={styles.tutorAvatar}>
-              <MaterialCommunityIcons name="account-voice" size={36} color={Colors.primary} />
+          {isUserSpeaking ? (
+            <View style={styles.tutorInfo}>
+              <View style={[styles.tutorAvatar, styles.userSpeakingAvatar]}>
+                <MaterialCommunityIcons name="microphone" size={36} color={Colors.tertiary} />
+              </View>
+              <Text style={[styles.speakerLabel, styles.userSpeakingLabel]}>A FALAR</Text>
+              <Text style={styles.tutorName}>Você</Text>
             </View>
-            <Text style={styles.speakerLabel}>A FALAR</Text>
-            <Text style={styles.tutorName}>Tutor Ricardo</Text>
-          </View>
+          ) : (
+            <View style={styles.tutorInfo}>
+              <View style={styles.tutorAvatar}>
+                <MaterialCommunityIcons name="account-voice" size={36} color={Colors.primary} />
+              </View>
+              <Text style={styles.speakerLabel}>A FALAR</Text>
+              <Text style={styles.tutorName}>{tutorName}</Text>
+            </View>
+          )}
         </View>
 
         {/* Transcript */}
@@ -153,50 +208,91 @@ export default function SessionScreen() {
           <Text style={styles.hint}>Comece a falar em Português...</Text>
         )}
 
-        <View style={styles.transcript}>
-          {transcript.map((entry) =>
-            entry.speaker === 'tutor' ? (
-              <View key={entry.id} style={styles.tutorBubbleWrap}>
-                <View style={styles.tutorBubbleHeader}>
-                  <View style={styles.ptFlag}>
-                    <View style={[styles.flagStripe, { backgroundColor: '#006600' }]} />
-                    <View style={[styles.flagStripe, { backgroundColor: '#fff' }]} />
-                    <View style={[styles.flagStripe, { backgroundColor: '#FF0000' }]} />
+        {prefs.showTranscript && (
+          <View style={styles.transcript}>
+            {transcript.map((entry) =>
+              entry.speaker === 'tutor' ? (
+                <View key={entry.id} style={styles.tutorBubbleWrap}>
+                  <View style={styles.tutorBubbleHeader}>
+                    <View style={styles.ptFlag}>
+                      <View style={[styles.flagStripe, { backgroundColor: '#006600' }]} />
+                      <View style={[styles.flagStripe, { backgroundColor: '#fff' }]} />
+                      <View style={[styles.flagStripe, { backgroundColor: '#FF0000' }]} />
+                    </View>
+                    <Text style={styles.bubbleSpeakerLabel}>TUTOR</Text>
                   </View>
-                  <Text style={styles.bubbleSpeakerLabel}>TUTOR</Text>
-                </View>
-                <View style={styles.tutorBubble}>
-                  <TappableText text={entry.text} style={styles.bubbleText} />
-                </View>
-              </View>
-            ) : (
-              <View key={entry.id} style={styles.userBubbleWrap}>
-                <View style={styles.userBubbleHeader}>
-                  <Text style={styles.bubbleSpeakerLabel}>VOCÊ</Text>
-                  <MaterialCommunityIcons name="check-circle" size={12} color={Colors.primary} />
-                </View>
-                <View style={styles.userBubble}>
-                  <Text style={styles.userBubbleText}>{entry.text}</Text>
-                </View>
-                {entry.hasCorrection && (
-                  <View style={styles.correctionRow}>
-                    <MaterialCommunityIcons name="auto-fix" size={14} color={Colors.tertiary} />
-                    <Text style={styles.correctionText}>Correção disponível</Text>
+                  <View style={styles.tutorBubble}>
+                    <TappableText text={entry.text} style={styles.bubbleText} />
                   </View>
-                )}
-              </View>
-            )
-          )}
-        </View>
+                </View>
+              ) : (
+                <View key={entry.id} style={styles.userBubbleWrap}>
+                  <View style={styles.userBubbleHeader}>
+                    <Text style={styles.bubbleSpeakerLabel}>VOCÊ</Text>
+                    <MaterialCommunityIcons name="check-circle" size={12} color={Colors.primary} />
+                  </View>
+                  <View style={styles.userBubble}>
+                    <Text style={styles.userBubbleText}>{entry.text}</Text>
+                  </View>
+                  {prefs.autoCorrections && entry.correction != null && (
+                    <View style={styles.correctionRow}>
+                      <MaterialCommunityIcons name="auto-fix" size={14} color={Colors.tertiary} />
+                      <Text style={styles.correctionText}>{entry.correction}</Text>
+                    </View>
+                  )}
+                </View>
+              )
+            )}
+          </View>
+        )}
 
         <View style={{ height: 120 }} />
       </ScrollView>
 
+      {/* Keyboard text input panel */}
+      {inputVisible && (
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.inputPanel}>
+            <TextInput
+              ref={inputRef}
+              style={styles.textInput}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Escreva em Português..."
+              placeholderTextColor={Colors.onSurface + '40'}
+              autoFocus
+              returnKeyType="send"
+              onSubmitEditing={handleSendText}
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+              onPress={handleSendText}
+              disabled={!inputText.trim()}
+            >
+              <MaterialCommunityIcons name="send" size={20} color={inputText.trim() ? Colors.primary : Colors.onSurface + '40'} />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
       {/* Bottom Controls */}
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
-        <TouchableOpacity style={styles.controlButton} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="keyboard" size={24} color={Colors.onSurface + '80'} />
-          <Text style={styles.controlLabel}>Escrever</Text>
+        <TouchableOpacity
+          style={styles.controlButton}
+          activeOpacity={0.7}
+          onPress={() => {
+            setInputVisible((v) => !v);
+            if (!inputVisible) setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+        >
+          <MaterialCommunityIcons
+            name="keyboard"
+            size={24}
+            color={inputVisible ? Colors.primary : Colors.onSurface + '80'}
+          />
+          <Text style={[styles.controlLabel, inputVisible && { color: Colors.primary }]}>
+            Escrever
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -211,13 +307,13 @@ export default function SessionScreen() {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.controlButton} onPress={toggleMute} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.controlButton} onPress={handleEndCall} activeOpacity={0.7}>
           <MaterialCommunityIcons
-            name={isMuted ? 'microphone' : 'microphone-off'}
+            name="flag-checkered"
             size={24}
             color={Colors.onSurface + '80'}
           />
-          <Text style={styles.controlLabel}>{isMuted ? 'Ativar' : 'Mudo'}</Text>
+          <Text style={styles.controlLabel}>Terminar</Text>
         </TouchableOpacity>
       </SafeAreaView>
     </View>
@@ -328,12 +424,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  userSpeakingAvatar: {
+    backgroundColor: Colors.tertiaryContainer,
+    borderColor: Colors.tertiary + '66',
+  },
   speakerLabel: {
     fontFamily: Typography.label,
     fontSize: 10,
     color: Colors.primary + 'B3',
     letterSpacing: 2,
     textTransform: 'uppercase',
+  },
+  userSpeakingLabel: {
+    color: Colors.tertiary + 'B3',
   },
   tutorName: {
     fontFamily: Typography.headlineBold,
@@ -417,6 +520,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.tertiary + 'E6',
     fontStyle: 'italic',
+  },
+
+  // Keyboard input panel
+  inputPanel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.surfaceContainerLow,
+    borderTopWidth: 1,
+    borderTopColor: Colors.outlineVariant + '33',
+  },
+  textInput: {
+    flex: 1,
+    height: 44,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceContainerHighest,
+    fontFamily: Typography.body,
+    fontSize: 15,
+    color: Colors.onSurface,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: Colors.surfaceContainerHighest,
   },
 
   // Bottom bar

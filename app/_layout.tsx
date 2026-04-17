@@ -2,6 +2,9 @@ import { registerGlobals } from '@livekit/react-native';
 registerGlobals();
 
 import { useEffect } from 'react';
+import { installDebugLog } from '../src/features/debug/useDebugLog';
+installDebugLog();
+
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -16,6 +19,8 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
+import { useAuth } from '../src/features/auth/hooks/useAuth';
+import AuthScreen from './auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,20 +34,44 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
+  const { isAuthenticated, isLoading: authLoading, error, register, login, clearError } = useAuth();
+
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded && !authLoading) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, authLoading]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || authLoading) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <AuthScreen
+          onRegister={register}
+          onLogin={login}
+          isLoading={authLoading}
+          error={error}
+          onClearError={clearError}
+        />
+      </>
+    );
+  }
 
   return (
     <>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="session/[id]" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+        <Stack.Screen
+          name="session/[id]"
+          options={{ headerShown: false, animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="session-detail/[id]"
+          options={{ headerShown: false, animation: 'slide_from_right' }}
+        />
       </Stack>
     </>
   );

@@ -1,4 +1,6 @@
-export type { UserLevel, ConversationTopic } from '../conversation/types';
+import type { UserLevel, ConversationTopic } from '../conversation/types';
+
+export type { UserLevel, ConversationTopic };
 
 export type SessionStatus = 'idle' | 'connecting' | 'active' | 'ended' | 'error';
 
@@ -12,7 +14,7 @@ export interface TranscriptEntry {
   speaker: 'user' | 'tutor';
   text: string;
   timestamp: number;
-  hasCorrection?: boolean;
+  correction?: string;
 }
 
 export interface LiveKitSessionData {

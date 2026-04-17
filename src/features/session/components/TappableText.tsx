@@ -10,7 +10,18 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Typography, BorderRadius, Spacing } from '../../../constants/theme';
 
+import * as SecureStore from 'expo-secure-store';
+
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
+const APP_TOKEN = process.env.EXPO_PUBLIC_APP_TOKEN ?? '';
+
+async function buildHeaders(): Promise<Record<string, string>> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (APP_TOKEN) h['X-App-Token'] = APP_TOKEN;
+  const token = await SecureStore.getItemAsync('auth_token');
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  return h;
+}
 
 interface WordPopupProps {
   word: string;
@@ -69,8 +80,8 @@ export function TappableText({ text, style }: TappableTextProps) {
     try {
       const res = await fetch(`${BACKEND_URL}/translate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word, from: 'pt', to: 'es' }),
+        headers: await buildHeaders(),
+        body: JSON.stringify({ word, from_lang: 'pt', to_lang: 'es' }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -126,6 +137,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 15,
     color: Colors.onSurface,
+    textDecorationLine: 'underline',
+    textDecorationColor: Colors.primary + '55',
+    textDecorationStyle: 'dotted',
   },
   overlay: {
     flex: 1,

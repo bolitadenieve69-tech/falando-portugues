@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import {
   View,
   Text,
@@ -10,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import { loadSessions, computeStats } from '../../src/services/history';
-import type { SessionRecord } from '../../src/services/history';
+import type { SessionRecord, TopicStat } from '../../src/services/history';
 
 const TOPIC_ICONS: Record<string, React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   viagens: 'airplane',
@@ -47,7 +48,7 @@ function formatDuration(seconds: number): string {
 
 export default function HistoryScreen() {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
-  const [stats, setStats] = useState({ totalSessions: 0, accuracy: 0, streakDays: 0 });
+  const [stats, setStats] = useState({ totalSessions: 0, accuracy: 0, streakDays: 0, byTopic: [] as TopicStat[] });
 
   useEffect(() => {
     loadSessions().then((data) => {
@@ -105,6 +106,18 @@ export default function HistoryScreen() {
           ))}
         </ScrollView>
 
+        {/* Topic breakdown */}
+        {stats.byTopic.length > 0 && (
+          <>
+            <Text style={styles.groupLabel}>PROGRESSO POR TÓPICO</Text>
+            <View style={styles.topicBreakdown}>
+              {stats.byTopic.map((t) => (
+                <TopicProgressRow key={t.topic} stat={t} />
+              ))}
+            </View>
+          </>
+        )}
+
         {sessions.length === 0 ? (
           <View style={styles.empty}>
             <MaterialCommunityIcons name="microphone-off" size={48} color={Colors.outline} />
@@ -134,13 +147,34 @@ export default function HistoryScreen() {
   );
 }
 
+function TopicProgressRow({ stat }: { stat: TopicStat }) {
+  const icon = TOPIC_ICONS[stat.topic] ?? 'forum';
+  const label = TOPIC_LABELS[stat.topic] ?? stat.topic;
+  const barColor = stat.accuracy >= 80 ? Colors.primary : Colors.tertiary;
+
+  return (
+    <View style={styles.topicRow}>
+      <MaterialCommunityIcons name={icon} size={16} color={Colors.onSurfaceVariant} style={{ width: 20 }} />
+      <Text style={styles.topicRowLabel}>{label}</Text>
+      <View style={styles.topicBarTrack}>
+        <View style={[styles.topicBarFill, { width: `${stat.accuracy}%` as any, backgroundColor: barColor }]} />
+      </View>
+      <Text style={[styles.topicRowAcc, { color: barColor }]}>{stat.accuracy}%</Text>
+    </View>
+  );
+}
+
 function SessionCardItem({ session }: { session: SessionRecord }) {
   const icon = TOPIC_ICONS[session.topic] ?? 'forum';
   const label = TOPIC_LABELS[session.topic] ?? session.topic;
   const excellent = session.correctionCount === 0;
 
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.75}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.75}
+      onPress={() => router.push({ pathname: '/session-detail/[id]', params: { id: session.id } } as any)}
+    >
       <View style={styles.cardTop}>
         <View style={styles.cardLeft}>
           <View style={styles.topicIcon}>
@@ -319,5 +353,42 @@ const styles = StyleSheet.create({
     fontFamily: Typography.label,
     fontSize: 12,
     color: Colors.onSurface + '66',
+  },
+
+  // Topic breakdown
+  topicBreakdown: {
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.xl,
+    gap: Spacing.md,
+  },
+  topicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  topicRowLabel: {
+    fontFamily: Typography.label,
+    fontSize: 12,
+    color: Colors.onSurfaceVariant,
+    width: 90,
+  },
+  topicBarTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.surfaceContainerHighest,
+    overflow: 'hidden',
+  },
+  topicBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  topicRowAcc: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 11,
+    width: 36,
+    textAlign: 'right',
   },
 });

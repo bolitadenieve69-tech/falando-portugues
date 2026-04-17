@@ -36,6 +36,12 @@ export async function clearHistory(): Promise<void> {
   await AsyncStorage.removeItem(HISTORY_KEY);
 }
 
+export interface TopicStat {
+  topic: ConversationTopic;
+  sessions: number;
+  accuracy: number;
+}
+
 export function computeStats(sessions: SessionRecord[]) {
   const totalSessions = sessions.length;
   const totalCorrections = sessions.reduce((sum, s) => sum + s.correctionCount, 0);
@@ -46,8 +52,30 @@ export function computeStats(sessions: SessionRecord[]) {
       : 0;
 
   const streakDays = computeStreak(sessions);
+  const byTopic = computeByTopic(sessions);
 
-  return { totalSessions, totalCorrections, accuracy, streakDays };
+  return { totalSessions, totalCorrections, accuracy, streakDays, byTopic };
+}
+
+function computeByTopic(sessions: SessionRecord[]): TopicStat[] {
+  const map = new Map<ConversationTopic, { msgs: number; corrections: number; count: number }>();
+
+  for (const s of sessions) {
+    const prev = map.get(s.topic) ?? { msgs: 0, corrections: 0, count: 0 };
+    map.set(s.topic, {
+      msgs: prev.msgs + s.messageCount,
+      corrections: prev.corrections + s.correctionCount,
+      count: prev.count + 1,
+    });
+  }
+
+  return Array.from(map.entries())
+    .map(([topic, { msgs, corrections, count }]) => ({
+      topic,
+      sessions: count,
+      accuracy: msgs > 0 ? Math.round(((msgs - corrections) / msgs) * 100) : 100,
+    }))
+    .sort((a, b) => b.sessions - a.sessions);
 }
 
 function computeStreak(sessions: SessionRecord[]): number {

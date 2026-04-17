@@ -14,7 +14,7 @@ export interface UserPreferences {
 const DEFAULT_PREFS: UserPreferences = {
   level: 'B1',
   defaultTopic: null,
-  voiceId: 'DMcOknq8n1B6XshFIJKJ',
+  voiceId: 'c0rzOw18hxEhaSybUod2', // Tiago — voz activa en .env
   showTranscript: true,
   autoCorrections: true,
 };

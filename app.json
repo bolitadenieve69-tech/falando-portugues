@@ -17,7 +17,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anguerrig.falandoportugues",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Falando Português usa o microfone para praticar conversação em português com o tutor de IA."
       }
     },
     "android": {
@@ -33,7 +34,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Falando Português usa o microfone para praticar conversação em português com o tutor de IA."
+        }
+      ]
     ],
     "extra": {
       "router": {},

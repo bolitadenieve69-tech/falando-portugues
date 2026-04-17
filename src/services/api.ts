@@ -1,6 +1,16 @@
+import * as SecureStore from 'expo-secure-store';
 import type { LiveKitSessionData } from '../features/session/types';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
+const APP_TOKEN = process.env.EXPO_PUBLIC_APP_TOKEN ?? '';
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (APP_TOKEN) headers['X-App-Token'] = APP_TOKEN;
+  const token = await SecureStore.getItemAsync('auth_token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
 
 interface CreateSessionParams {
   level: string;
@@ -10,11 +20,11 @@ interface CreateSessionParams {
 }
 
 export async function createSession(
-  params: CreateSessionParams
+  params: CreateSessionParams,
 ): Promise<LiveKitSessionData> {
   const response = await fetch(`${BACKEND_URL}/session`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({
       level: params.level,
       topic: params.topic,
@@ -29,7 +39,6 @@ export async function createSession(
   }
 
   const data = await response.json();
-
   return {
     roomName: data.room_name,
     token: data.token,

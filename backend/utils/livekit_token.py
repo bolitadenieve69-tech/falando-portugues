@@ -1,7 +1,7 @@
 """LiveKit access token generation."""
 
 import os
-import time
+from datetime import timedelta
 from livekit.api import AccessToken, VideoGrants
 
 
@@ -22,7 +22,7 @@ def create_participant_token(room_name: str, participant_name: str) -> str:
         .with_identity(participant_name)
         .with_name(participant_name)
         .with_grants(grants)
-        .with_ttl(3600)  # 1 hour
+        .with_ttl(timedelta(hours=1))
         .to_jwt()
     )
 
