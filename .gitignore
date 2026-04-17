@@ -49,3 +49,5 @@ __pycache__/
 # generated native folders
 /ios
 /android
+backend/falando.db
+.env.local
