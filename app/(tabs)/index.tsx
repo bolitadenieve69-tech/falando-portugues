@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel, ConversationTopic } from '../../src/features/session/types';
 import { loadPreferences } from '../../src/services/preferences';
@@ -22,23 +22,33 @@ interface TopicItem {
   key: ConversationTopic;
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-  subtitle: string;
+  accent: string;
 }
 
 const TOPICS: TopicItem[] = [
-  { key: 'viagens', label: 'Viagens', icon: 'airplane-takeoff', subtitle: '✈️ Vocabulário' },
-  { key: 'trabalho', label: 'Trabalho', icon: 'briefcase', subtitle: '💼 Profissional' },
-  { key: 'familia', label: 'Família', icon: 'account-group', subtitle: '👨‍👩‍👧 Relações' },
-  { key: 'comida', label: 'Comida', icon: 'food-fork-drink', subtitle: '🍽️ Gastronomia' },
-  { key: 'cultura', label: 'Cultura', icon: 'theater', subtitle: '🎭 Tradições' },
-  { key: 'livre', label: 'Livre', icon: 'forum', subtitle: '💬 Conversa' },
+  { key: 'viagens',  label: 'Viagens',  icon: 'airplane-takeoff', accent: '#4A90D9' },
+  { key: 'trabalho', label: 'Trabalho', icon: 'briefcase',         accent: '#9B59B6' },
+  { key: 'familia',  label: 'Família',  icon: 'account-group',     accent: '#E67E22' },
+  { key: 'comida',   label: 'Comida',   icon: 'food-fork-drink',   accent: '#E74C3C' },
+  { key: 'cultura',  label: 'Cultura',  icon: 'theater',           accent: '#F39C12' },
+  { key: 'livre',    label: 'Livre',    icon: 'forum',             accent: Colors.primary },
 ];
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 
 export default function HomeScreen() {
   const [selectedLevel, setSelectedLevel] = useState<UserLevel>('B1');
   const [selectedTopic, setSelectedTopic] = useState<ConversationTopic | null>(null);
   const [streakDays, setStreakDays] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
+  const [username, setUsername] = useState('');
+
+  const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadPreferences().then((prefs) => setSelectedLevel(prefs.level));
@@ -47,7 +57,22 @@ export default function HomeScreen() {
       setStreakDays(stats.streakDays);
       setTotalSessions(stats.totalSessions);
     });
+    SecureStore.getItemAsync('auth_username').then((name) => setUsername(name ?? ''));
   }, []);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 2000, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
+  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.15] });
 
   function handleStartSession() {
     router.push({
@@ -56,16 +81,19 @@ export default function HomeScreen() {
     } as any);
   }
 
+  const initial = username ? username[0].toUpperCase() : '?';
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity hitSlop={8}>
-            <MaterialCommunityIcons name="menu" size={24} color={Colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Falando Português</Text>
-          <View style={styles.avatar} />
+          <View>
+            <Text style={styles.greetingLabel}>{greeting().toUpperCase()}</Text>
+            <Text style={styles.greetingName}>{username || 'Bem-vindo'} 👋</Text>
+          </View>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -74,120 +102,77 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Mic Hero */}
-        <View style={styles.heroSection}>
-          <View style={styles.pulseOuter} />
-          <View style={styles.pulseInner} />
-          <TouchableOpacity
-            style={styles.micButton}
-            onPress={handleStartSession}
-            activeOpacity={0.85}
-          >
-            <MaterialCommunityIcons
-              name="microphone"
-              size={64}
-              color={Colors.primary}
-            />
-          </TouchableOpacity>
-          <Text style={styles.heroTitle}>Começar Prática</Text>
-          <Text style={styles.heroSubtitle}>TOQUE PARA FALAR EM PORTUGUÊS</Text>
-        </View>
+        {/* Hero card */}
+        <TouchableOpacity style={styles.heroCard} onPress={handleStartSession} activeOpacity={0.88}>
+          <Animated.View style={[styles.pulseRing, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]} />
+          <View style={styles.micButton}>
+            <MaterialCommunityIcons name="microphone" size={36} color={Colors.primary} />
+          </View>
+          <Text style={styles.heroText}>
+            Toca para começar a praticar{'\n'}
+            <Text style={styles.heroHighlight}>português europeu</Text>
+            {' '}agora
+          </Text>
+        </TouchableOpacity>
 
-        {/* Level Selector */}
+        {/* Level */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Nível Atual</Text>
-            <Text style={styles.sectionValue}>
-              {selectedLevel === 'A1' || selectedLevel === 'A2'
-                ? 'Iniciante'
-                : selectedLevel === 'B1' || selectedLevel === 'B2'
-                ? 'Intermédio'
-                : 'Avançado'}
-            </Text>
+            <Text style={styles.sectionTitle}>O meu nível</Text>
+            <Text style={styles.sectionBadge}>PROGRESSO</Text>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.levelRow}
-          >
-            {LEVELS.map((level) => (
-              <TouchableOpacity
-                key={level}
-                style={[
-                  styles.levelChip,
-                  selectedLevel === level && styles.levelChipActive,
-                ]}
-                onPress={() => setSelectedLevel(level)}
-              >
-                <Text
-                  style={[
-                    styles.levelChipText,
-                    selectedLevel === level && styles.levelChipTextActive,
-                  ]}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelRow}>
+            {LEVELS.map((level) => {
+              const active = selectedLevel === level;
+              return (
+                <TouchableOpacity
+                  key={level}
+                  style={[styles.levelChip, active && styles.levelChipActive]}
+                  onPress={() => setSelectedLevel(level)}
                 >
-                  {level}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text style={[styles.levelChipText, active && styles.levelChipTextActive]}>
+                    {level}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
-        {/* Topic Grid */}
+        {/* Topics */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.topicsTitle}>Explorar Tópicos</Text>
-            <MaterialCommunityIcons name="auto-fix" size={20} color={Colors.primary} />
-          </View>
+          <Text style={styles.sectionTitle}>Tema</Text>
           <View style={styles.topicsGrid}>
             {TOPICS.map((topic) => {
               const isActive = selectedTopic === topic.key;
-              const isFree = topic.key === 'livre';
               return (
                 <TouchableOpacity
                   key={topic.key}
-                  style={[
-                    styles.topicCard,
-                    isActive && styles.topicCardActive,
-                    isFree && styles.topicCardFree,
-                  ]}
+                  style={[styles.topicCard, isActive && { backgroundColor: topic.accent + '22', borderColor: topic.accent + '66' }]}
                   onPress={() => setSelectedTopic(isActive ? null : topic.key)}
                   activeOpacity={0.75}
                 >
-                  <View
-                    style={[
-                      styles.topicIconWrap,
-                      isFree && styles.topicIconWrapFree,
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={topic.icon}
-                      size={24}
-                      color={isFree ? Colors.primary : Colors.primary}
-                    />
+                  <View style={[styles.topicIconWrap, { backgroundColor: topic.accent + '18' }]}>
+                    <MaterialCommunityIcons name={topic.icon} size={28} color={topic.accent} />
                   </View>
-                  <Text
-                    style={[styles.topicLabel, isFree && styles.topicLabelFree]}
-                  >
-                    {topic.label}
-                  </Text>
-                  <Text style={styles.topicSubtitle}>{topic.subtitle}</Text>
+                  <Text style={styles.topicLabel}>{topic.label}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        {/* Stats Bento */}
+        {/* Stats row */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { flex: 1 }]}>
-            <Text style={styles.statLabel}>DIAS SEGUIDOS</Text>
+          <View style={[styles.statCard, { borderColor: Colors.tertiary + '33' }]}>
+            <MaterialCommunityIcons name="fire" size={18} color={Colors.tertiary} />
             <Text style={[styles.statValue, { color: Colors.tertiary }]}>{streakDays}</Text>
-            <Text style={styles.statSub}>{streakDays > 0 ? 'Ótimo progresso!' : 'Começa hoje!'}</Text>
+            <Text style={styles.statLabel}>Dias seguidos</Text>
           </View>
-          <View style={[styles.statCard, styles.statCardBorder, { flex: 1 }]}>
-            <Text style={styles.statLabel}>CONVERSAS</Text>
+          <View style={[styles.statCard, { borderColor: Colors.primary + '33' }]}>
+            <MaterialCommunityIcons name="message-text" size={18} color={Colors.primary} />
             <Text style={[styles.statValue, { color: Colors.primary }]}>{totalSessions}</Text>
-            <Text style={styles.statSub}>Sessões completadas</Text>
+            <Text style={styles.statLabel}>Conversas</Text>
           </View>
         </View>
 
@@ -198,13 +183,8 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  safeArea: {
-    backgroundColor: Colors.background + 'CC',
-  },
+  root: { flex: 1, backgroundColor: Colors.background },
+  safeArea: { backgroundColor: Colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -212,204 +192,167 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  headerTitle: {
-    fontFamily: Typography.headlineBold,
-    fontSize: 20,
-    color: Colors.primary,
-    letterSpacing: -0.5,
+  greetingLabel: {
+    fontFamily: Typography.label,
+    fontSize: 10,
+    color: Colors.onSurfaceVariant,
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  greetingName: {
+    fontFamily: Typography.headline,
+    fontSize: 22,
+    color: Colors.onSurface,
+    letterSpacing: -0.3,
   },
   avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: Colors.surfaceContainerHighest,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.outlineVariant + '44',
   },
+  avatarText: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 16,
+    color: Colors.primary,
+  },
+
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: Spacing.lg },
 
-  // Hero
-  heroSection: {
+  heroCard: {
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
     alignItems: 'center',
-    paddingVertical: Spacing.xxl,
     marginBottom: Spacing.xl,
-    position: 'relative',
-  },
-  pulseOuter: {
-    position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    borderWidth: 2,
-    borderColor: Colors.primary + '1A',
-  },
-  pulseInner: {
-    position: 'absolute',
-    width: 210,
-    height: 210,
-    borderRadius: 105,
     borderWidth: 1,
-    borderColor: Colors.primary + '0D',
+    borderColor: Colors.primary + '1A',
+    overflow: 'hidden',
+    minHeight: 200,
+    justifyContent: 'center',
+    gap: Spacing.lg,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: Colors.primary + '0F',
   },
   micButton: {
-    width: 192,
-    height: 192,
-    borderRadius: 96,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.primaryContainer,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.primaryContainer,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
-    shadowRadius: 40,
-    elevation: 20,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  heroTitle: {
-    fontFamily: Typography.headline,
-    fontSize: 28,
-    color: Colors.onSurface,
-    marginTop: Spacing.lg,
-    letterSpacing: -0.5,
-  },
-  heroSubtitle: {
-    fontFamily: Typography.label,
-    fontSize: 11,
+  heroText: {
+    fontFamily: Typography.body,
+    fontSize: 16,
     color: Colors.onSurfaceVariant,
-    letterSpacing: 3,
-    marginTop: 6,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  heroHighlight: {
+    fontFamily: Typography.headlineBold,
+    color: Colors.primary,
   },
 
-  // Section
   section: { marginBottom: Spacing.xl },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.md,
-    paddingHorizontal: 4,
   },
-  sectionLabel: {
-    fontFamily: Typography.label,
-    fontSize: 10,
-    color: Colors.onSurfaceVariant + '99',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+  sectionTitle: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 18,
+    color: Colors.onSurface,
   },
-  sectionValue: {
+  sectionBadge: {
     fontFamily: Typography.label,
     fontSize: 10,
     color: Colors.primary,
     letterSpacing: 2,
-    textTransform: 'uppercase',
   },
 
-  // Level chips
-  levelRow: { gap: 10, paddingVertical: 4 },
+  levelRow: { gap: 8, paddingVertical: 4 },
   levelChip: {
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.surfaceContainerHighest,
   },
-  levelChipActive: {
-    backgroundColor: Colors.primaryContainer,
-    shadowColor: Colors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
+  levelChipActive: { backgroundColor: Colors.primary },
   levelChipText: {
     fontFamily: Typography.headlineBold,
     fontSize: 14,
-    color: Colors.onSurface,
+    color: Colors.onSurface + '88',
   },
-  levelChipTextActive: {
-    color: Colors.primary,
-  },
+  levelChipTextActive: { color: '#002200' },
 
-  // Topics
-  topicsTitle: {
-    fontFamily: Typography.headline,
-    fontSize: 20,
-    color: Colors.onSurface,
-  },
   topicsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
   },
   topicCard: {
-    width: '47%',
-    padding: Spacing.lg,
+    width: '31%',
+    aspectRatio: 0.9,
     borderRadius: BorderRadius.md,
     backgroundColor: Colors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: Colors.outlineVariant + '1A',
-  },
-  topicCardActive: {
-    backgroundColor: Colors.surfaceContainerHigh,
-    borderColor: Colors.primary + '33',
-  },
-  topicCardFree: {
-    borderColor: Colors.primary + '33',
-    backgroundColor: Colors.surfaceContainerLowest,
-  },
-  topicIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: Colors.secondaryContainer + '4D',
+    borderColor: Colors.outlineVariant + '22',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.md,
+    gap: Spacing.sm,
   },
-  topicIconWrapFree: {
-    backgroundColor: Colors.primaryContainer + '33',
+  topicIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   topicLabel: {
-    fontFamily: Typography.headlineBold,
-    fontSize: 16,
+    fontFamily: Typography.body,
+    fontSize: 12,
     color: Colors.onSurface,
-    marginBottom: 4,
-  },
-  topicLabelFree: { color: Colors.primary },
-  topicSubtitle: {
-    fontFamily: Typography.label,
-    fontSize: 11,
-    color: Colors.onSurfaceVariant,
+    textAlign: 'center',
   },
 
-  // Stats
   statsRow: {
     flexDirection: 'row',
     gap: Spacing.md,
-    marginTop: Spacing.xl,
   },
   statCard: {
+    flex: 1,
     backgroundColor: Colors.surfaceContainerLow,
-    padding: Spacing.lg,
     borderRadius: BorderRadius.md,
-    height: 160,
-    justifyContent: 'space-between',
-  },
-  statCardBorder: {
-    backgroundColor: Colors.surfaceContainerLowest,
+    padding: Spacing.lg,
+    alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
-    borderColor: Colors.outlineVariant + '1A',
-  },
-  statLabel: {
-    fontFamily: Typography.label,
-    fontSize: 10,
-    color: Colors.onSurfaceVariant,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
   },
   statValue: {
     fontFamily: Typography.headline,
-    fontSize: 48,
-    lineHeight: 52,
+    fontSize: 36,
+    lineHeight: 40,
   },
-  statSub: {
+  statLabel: {
     fontFamily: Typography.label,
     fontSize: 11,
     color: Colors.onSurfaceVariant,

@@ -74,6 +74,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
   const roomRef = useRef<Room | null>(null);
   const sessionStartRef = useRef<number>(0);
   const sessionConfigRef = useRef<SessionConfig | null>(null);
+  const transcriptRef = useRef<TranscriptEntry[]>([]);
 
   const addTranscriptEntry = useCallback(
     (speaker: 'user' | 'tutor', rawText: string) => {
@@ -88,7 +89,8 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         timestamp: Date.now(),
         correction,
       };
-      setTranscript((prev) => [...prev, entry]);
+      transcriptRef.current = [...transcriptRef.current, entry];
+      setTranscript(transcriptRef.current);
     },
     [],
   );
@@ -98,6 +100,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
       setStatus('connecting');
       setError(null);
       setTranscript([]);
+      transcriptRef.current = [];
       setIsUserSpeaking(false);
       sessionStartRef.current = Date.now();
       sessionConfigRef.current = config;
@@ -184,25 +187,23 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     }
     setIsUserSpeaking(false);
 
-    setTranscript((current) => {
-      const config = sessionConfigRef.current;
-      if (config && sessionStartRef.current > 0 && current.length > 0) {
-        const corrections = current.filter((e) => e.correction != null).length;
-        const excerpt = current.find((e) => e.speaker === 'tutor')?.text ?? '';
-        saveSession({
-          id: `${sessionStartRef.current}`,
-          topic: config.topic,
-          level: config.level,
-          startedAt: sessionStartRef.current,
-          endedAt,
-          durationSeconds: Math.round((endedAt - sessionStartRef.current) / 1000),
-          messageCount: current.length,
-          correctionCount: corrections,
-          excerpt: excerpt.slice(0, 120),
-        });
-      }
-      return current;
-    });
+    const current = transcriptRef.current;
+    const config = sessionConfigRef.current;
+    if (config && sessionStartRef.current > 0 && current.length > 0) {
+      const corrections = current.filter((e) => e.correction != null).length;
+      const excerpt = current.find((e) => e.speaker === 'tutor')?.text ?? '';
+      await saveSession({
+        id: `${sessionStartRef.current}`,
+        topic: config.topic,
+        level: config.level,
+        startedAt: sessionStartRef.current,
+        endedAt,
+        durationSeconds: Math.round((endedAt - sessionStartRef.current) / 1000),
+        messageCount: current.length,
+        correctionCount: corrections,
+        excerpt: excerpt.slice(0, 120),
+      });
+    }
 
     setStatus('ended');
     setSessionData(null);

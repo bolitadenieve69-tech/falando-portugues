@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import type { UserLevel, ConversationTopic } from '../features/session/types';
 
-const HISTORY_KEY = 'session_history';
+const HISTORY_FILE = 'session_history.json';
 const MAX_SESSIONS = 50;
 
 export interface SessionRecord {
@@ -16,16 +16,26 @@ export interface SessionRecord {
   excerpt: string;
 }
 
+function historyUri(): string {
+  return (FileSystem.documentDirectory ?? '') + HISTORY_FILE;
+}
+
 export async function saveSession(record: SessionRecord): Promise<void> {
-  const existing = await loadSessions();
-  const updated = [record, ...existing].slice(0, MAX_SESSIONS);
-  await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+  try {
+    const existing = await loadSessions();
+    const updated = [record, ...existing].slice(0, MAX_SESSIONS);
+    await FileSystem.writeAsStringAsync(historyUri(), JSON.stringify(updated));
+  } catch {
+    // Storage not available — skip silently
+  }
 }
 
 export async function loadSessions(): Promise<SessionRecord[]> {
-  const raw = await AsyncStorage.getItem(HISTORY_KEY);
-  if (!raw) return [];
   try {
+    const uri = historyUri();
+    const info = await FileSystem.getInfoAsync(uri);
+    if (!info.exists) return [];
+    const raw = await FileSystem.readAsStringAsync(uri);
     return JSON.parse(raw) as SessionRecord[];
   } catch {
     return [];
@@ -33,7 +43,13 @@ export async function loadSessions(): Promise<SessionRecord[]> {
 }
 
 export async function clearHistory(): Promise<void> {
-  await AsyncStorage.removeItem(HISTORY_KEY);
+  try {
+    const uri = historyUri();
+    const info = await FileSystem.getInfoAsync(uri);
+    if (info.exists) await FileSystem.deleteAsync(uri);
+  } catch {
+    // Storage not available — skip silently
+  }
 }
 
 export interface TopicStat {
@@ -80,19 +96,14 @@ function computeByTopic(sessions: SessionRecord[]): TopicStat[] {
 
 function computeStreak(sessions: SessionRecord[]): number {
   if (sessions.length === 0) return 0;
-  const days = new Set(
-    sessions.map((s) => new Date(s.startedAt).toDateString())
-  );
+  const days = new Set(sessions.map((s) => new Date(s.startedAt).toDateString()));
   let streak = 0;
   const today = new Date();
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    if (days.has(d.toDateString())) {
-      streak++;
-    } else {
-      break;
-    }
+    if (days.has(d.toDateString())) streak++;
+    else break;
   }
   return streak;
 }

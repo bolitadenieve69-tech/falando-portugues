@@ -7,38 +7,43 @@ import os
 
 import aiohttp
 from dotenv import load_dotenv
+from loguru import logger as loguru_logger
 
 logger = logging.getLogger(__name__)
 
-from deepgram import LiveOptions
 from pipecat.frames.frames import (
     Frame,
     LLMContextFrame,
     LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
+    LLMMessagesAppendFrame,
+    LLMRunFrame,
     TextFrame,
     TranscriptionFrame,
+    UserStoppedSpeakingFrame,
 )
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
-from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
+from pipecat.processors.filters.identity_filter import IdentityFilter
+from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.anthropic.llm import AnthropicLLMService
-from pipecat.services.deepgram.stt import DeepgramSTTService
+from pipecat.services.deepgram.stt import DeepgramSTTService, LiveOptions
 from pipecat.services.elevenlabs.tts import ElevenLabsHttpTTSService
 from pipecat.transports.livekit.transport import LiveKitParams, LiveKitTransport
 
 from prompts.tutor_pt import build_system_prompt
 
 
-class TranscriptPublisher(FrameProcessor):
-    """Intercepts transcript frames and publishes them to the LiveKit data channel.
+class TranscriptPublisher(IdentityFilter):
+    """Taps into the frame stream and publishes transcripts to the LiveKit data channel.
 
-    Two instances are used in the pipeline:
-    - mode="user"  placed after STT — captures TranscriptionFrame (spoken speech)
-    - mode="tutor" placed after LLM — captures buffered LLM text output
+    Extends IdentityFilter so ALL frames pass through the pipeline correctly.
+    Two instances are used:
+    - speaker="user"  placed after STT — captures what the user says
+    - speaker="tutor" placed after LLM — captures the tutor's full response
     """
 
     def __init__(self, speaker: str, **kwargs):
@@ -51,26 +56,35 @@ class TranscriptPublisher(FrameProcessor):
         self._room = room
 
     async def process_frame(self, frame: Frame, direction: FrameDirection) -> None:
-        await self.push_frame(frame, direction)
+        # IdentityFilter.process_frame calls super() + push_frame — all frames pass through.
+        await super().process_frame(frame, direction)
 
         if self._room is None:
             return
 
-        if self._speaker == "user" and isinstance(frame, TranscriptionFrame):
-            text = (frame.text or "").strip()
-            if text:
-                await self._publish(text)
+        if self._speaker == "user":
+            if isinstance(frame, TranscriptionFrame):
+                text = (frame.text or "").strip()
+                if text:
+                    loguru_logger.info("[transcript] user: {}", text)
+                    await self._publish(text)
+            elif isinstance(frame, UserStoppedSpeakingFrame):
+                loguru_logger.info("[transcript] user turn ended")
 
         elif self._speaker == "tutor":
             if isinstance(frame, LLMFullResponseStartFrame):
                 self._buffer = []
+                loguru_logger.info("[transcript] tutor response starting")
             elif isinstance(frame, TextFrame):
                 self._buffer.append(frame.text or "")
             elif isinstance(frame, LLMFullResponseEndFrame):
                 full = "".join(self._buffer).strip()
                 self._buffer = []
                 if full:
+                    loguru_logger.info("[transcript] tutor: {}", full)
                     await self._publish(full)
+                else:
+                    loguru_logger.warning("[transcript] tutor response was empty")
 
     async def _publish(self, text: str) -> None:
         try:
@@ -81,20 +95,17 @@ class TranscriptPublisher(FrameProcessor):
             try:
                 await local.publish_data(payload, reliable=True)
             except TypeError:
-                # Older livekit-rtc API uses keyword `kind` instead of `reliable`
                 from livekit import rtc
                 await local.publish_data(payload, kind=rtc.DataPacketKind.RELIABLE)
         except Exception as exc:
-            logger.warning("[transcript] publish (%s) failed: %s", self._speaker, exc)
+            loguru_logger.warning("[transcript] publish ({}) failed: {}", self._speaker, exc)
 
 
 class _SerialAnthropicLLM(AnthropicLLMService):
     """Prevents concurrent Anthropic API calls.
 
-    Rapid user interruptions can fire multiple LLMContextFrames before the
-    previous LLM response completes, causing HTTP 429 "Number of concurrent
-    connections exceeded" errors. This guard drops any context frame that
-    arrives while a generation is already in-flight.
+    Drops LLMContextFrames that arrive while a generation is already in-flight
+    to avoid HTTP 429 errors from rapid user interruptions.
     """
 
     def __init__(self, *args, **kwargs):
@@ -103,13 +114,14 @@ class _SerialAnthropicLLM(AnthropicLLMService):
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         if isinstance(frame, LLMContextFrame):
+            loguru_logger.info("[llm] LLMContextFrame received — lock={}", self._generation_lock.locked())
             if self._generation_lock.locked():
-                logger.warning(
-                    "[llm-gate] LLM already generating — dropping context frame to prevent 429"
-                )
-                return  # drop; no await, no state change
+                loguru_logger.warning("[llm-gate] already generating — dropping frame")
+                return
             async with self._generation_lock:
+                loguru_logger.info("[llm] generation started")
                 await super().process_frame(frame, direction)
+                loguru_logger.info("[llm] generation complete")
         else:
             await super().process_frame(frame, direction)
 
@@ -123,12 +135,6 @@ async def run_bot(
     voice_id: str = "DMcOknq8n1B6XshFIJKJ",
     max_retries: int = 3,
 ) -> None:
-    """Run the Pipecat pipeline for a single session.
-
-    Retries up to *max_retries* times on transient connection errors
-    (network blips, upstream 5xx from ElevenLabs/Deepgram).
-    """
-    # Re-read .env on every call so key rotation takes effect without restart.
     load_dotenv(override=True)
 
     for attempt in range(1, max_retries + 1):
@@ -137,23 +143,14 @@ async def run_bot(
             return
         except Exception as exc:
             if attempt < max_retries:
-                wait = 2 ** (attempt - 1)  # 1s, 2s, 4s …
+                wait = 2 ** (attempt - 1)
                 logger.warning(
-                    "[bot] Session %s — attempt %d/%d failed (%s). Retrying in %ds…",
-                    room_name,
-                    attempt,
-                    max_retries,
-                    exc,
-                    wait,
+                    "[bot] %s — attempt %d/%d failed (%s). Retrying in %ds…",
+                    room_name, attempt, max_retries, exc, wait,
                 )
                 await asyncio.sleep(wait)
             else:
-                logger.error(
-                    "[bot] Session %s — all %d attempts failed. Last error: %s",
-                    room_name,
-                    max_retries,
-                    exc,
-                )
+                logger.error("[bot] %s — all %d attempts failed: %s", room_name, max_retries, exc)
                 raise
 
 
@@ -165,8 +162,6 @@ async def _run_pipeline(
     topic: str,
     voice_id: str,
 ) -> None:
-    """Internal: build and run the Pipecat pipeline once."""
-
     transport = LiveKitTransport(
         url=room_url,
         token=token,
@@ -177,15 +172,12 @@ async def _run_pipeline(
         ),
     )
 
-    # Increase endpointing to 1000 ms — waits for a full second of silence before
-    # declaring end of turn, reducing the false "end of turn" events that caused
-    # rapid-fire LLMContextFrames and downstream 429 errors.
     stt = DeepgramSTTService(
         api_key=os.environ["DEEPGRAM_API_KEY"],
         live_options=LiveOptions(
             language="pt",
             model="nova-3-general",
-            endpointing=1000,  # ms of silence → end of turn (was 500)
+            endpointing=1000,
             smart_format=True,
             interim_results=True,
             punctuate=True,
@@ -193,11 +185,8 @@ async def _run_pipeline(
     )
 
     system_prompt = build_system_prompt(level=level, topic=topic)
-    logger.info("[bot] System prompt (first 120 chars): %s", system_prompt[:120])
+    logger.info("[bot] prompt[:120]: %s", system_prompt[:120])
 
-    # System message is the first entry; the Anthropic adapter extracts it and
-    # passes it to Claude as the `system=` parameter.  Using LLMContext (universal)
-    # + LLMContextAggregatorPair so the rest of the pipeline stays service-agnostic.
     llm = _SerialAnthropicLLM(
         api_key=os.environ["ANTHROPIC_API_KEY"],
         model="claude-haiku-4-5-20251001",
@@ -206,16 +195,12 @@ async def _run_pipeline(
 
     context = LLMContext(
         messages=[
-            # Anthropic adapter pulls out the "system" role message and passes it
-            # as the system= parameter; it never reaches the model as a user turn.
             {"role": "system", "content": system_prompt},
-            # Initial greeting triggers the first tutor response on session start.
             {"role": "user", "content": "Olá!"},
         ]
     )
 
     context_aggregator = LLMContextAggregatorPair(context)
-
     user_pub = TranscriptPublisher("user")
     tutor_pub = TranscriptPublisher("tutor")
 
@@ -227,32 +212,50 @@ async def _run_pipeline(
             model="eleven_multilingual_v2",
         )
 
-        pipeline = Pipeline(
-            [
-                transport.input(),
-                stt,
-                user_pub,                    # publishes user STT transcript
-                context_aggregator.user(),
-                llm,
-                tutor_pub,                   # publishes tutor LLM response
-                tts,
-                transport.output(),
-                context_aggregator.assistant(),
-            ]
-        )
+        pipeline = Pipeline([
+            transport.input(),
+            stt,
+            user_pub,
+            context_aggregator.user(),
+            llm,
+            tutor_pub,
+            tts,
+            transport.output(),
+            context_aggregator.assistant(),
+        ])
 
-        task = PipelineTask(pipeline)
+        # enable_rtvi=False removes the RTVIProcessor wrapper that waits for an
+        # RTVI handshake that never arrives (our app uses LiveKit directly).
+        task = PipelineTask(pipeline, enable_rtvi=False)
+
+        @task.event_handler("on_pipeline_started")
+        async def on_pipeline_started(task, frame):
+            loguru_logger.info("[bot] on_pipeline_started fired — pipeline is running")
 
         @transport.event_handler("on_first_participant_joined")
         async def on_first_participant_joined(transport, participant_id: str):
-            # Give publishers access to the LiveKit room so they can publish data.
+            loguru_logger.info("[bot] first participant joined: {}", participant_id)
+            # Room is now connected — safe to access local_participant.
             try:
                 room = transport._client.room
                 user_pub.set_room(room)
                 tutor_pub.set_room(room)
-            except AttributeError:
-                logger.warning("[bot] Could not access LiveKit room for transcript publishing")
-            await task.queue_frames([LLMContextFrame(context)])
+                loguru_logger.info("[bot] room reference set on publishers")
+            except Exception as exc:
+                loguru_logger.warning("[bot] could not set room on publishers: {}", exc)
+            # Trigger the opening greeting by injecting an initial user turn.
+            loguru_logger.info("[bot] queuing initial LLMRunFrame for opening greeting")
+            await task.queue_frames([LLMRunFrame()])
+
+        @transport.event_handler("on_audio_track_subscribed")
+        async def on_audio_track_subscribed(transport, participant_id: str):
+            loguru_logger.info("[bot] audio track subscribed: {}", participant_id)
+            try:
+                room = transport._client.room
+                user_pub.set_room(room)
+                tutor_pub.set_room(room)
+            except Exception as exc:
+                loguru_logger.warning("[bot] could not set room on audio_track_subscribed: {}", exc)
 
         @transport.event_handler("on_data_received")
         async def on_data_received(transport, data: bytes, participant_id: str):
@@ -261,10 +264,15 @@ async def _run_pipeline(
                 if msg.get("type") == "user_text":
                     text = msg.get("text", "").strip()
                     if text:
-                        context.messages.append({"role": "user", "content": text})
-                        await task.queue_frames([LLMContextFrame(context)])
+                        loguru_logger.info("[bot] data channel user_text: {}", text)
+                        await task.queue_frames([
+                            LLMMessagesAppendFrame(
+                                messages=[{"role": "user", "content": text}],
+                                run_llm=True,
+                            )
+                        ])
             except Exception as exc:
-                logger.warning("[bot] Failed to process data message: %s", exc)
+                loguru_logger.warning("[bot] data message error: {}", exc)
 
         runner = PipelineRunner()
         await runner.run(task)

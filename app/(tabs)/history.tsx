@@ -165,9 +165,10 @@ function TopicProgressRow({ stat }: { stat: TopicStat }) {
 }
 
 function SessionCardItem({ session }: { session: SessionRecord }) {
+  if (!session?.id) return null;
   const icon = TOPIC_ICONS[session.topic] ?? 'forum';
   const label = TOPIC_LABELS[session.topic] ?? session.topic;
-  const excellent = session.correctionCount === 0;
+  const excellent = (session.correctionCount ?? 0) === 0;
 
   return (
     <TouchableOpacity

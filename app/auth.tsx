@@ -35,6 +35,7 @@ export default function AuthScreen({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<'username' | 'password' | null>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -110,11 +111,11 @@ export default function AuthScreen({
           {/* Form */}
           <Animated.View style={[styles.form, { transform: [{ translateX: shakeAnim }] }]}>
             {mode === 'register' && (
-              <View style={styles.inputWrap}>
+              <View style={[styles.inputWrap, focusedInput === 'username' && styles.inputWrapFocused]}>
                 <MaterialCommunityIcons
                   name="account-outline"
                   size={20}
-                  color={Colors.onSurfaceVariant}
+                  color={focusedInput === 'username' ? Colors.primary : Colors.onSurfaceVariant}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -123,6 +124,8 @@ export default function AuthScreen({
                   placeholderTextColor={Colors.onSurface + '40'}
                   value={username}
                   onChangeText={(t) => { setUsername(t); onClearError(); }}
+                  onFocus={() => setFocusedInput('username')}
+                  onBlur={() => setFocusedInput(null)}
                   autoCapitalize="words"
                   autoCorrect={false}
                   returnKeyType="next"
@@ -131,11 +134,11 @@ export default function AuthScreen({
               </View>
             )}
 
-            <View style={styles.inputWrap}>
+            <View style={[styles.inputWrap, focusedInput === 'password' && styles.inputWrapFocused]}>
               <MaterialCommunityIcons
                 name="lock-outline"
                 size={20}
-                color={Colors.onSurfaceVariant}
+                color={focusedInput === 'password' ? Colors.primary : Colors.onSurfaceVariant}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -144,6 +147,8 @@ export default function AuthScreen({
                 placeholderTextColor={Colors.onSurface + '40'}
                 value={password}
                 onChangeText={(t) => { setPassword(t); onClearError(); }}
+                onFocus={() => setFocusedInput('password')}
+                onBlur={() => setFocusedInput(null)}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -215,6 +220,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 28,
+    elevation: 12,
   },
   appName: {
     fontFamily: Typography.headlineBold,
@@ -261,6 +271,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     height: 54,
     gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  inputWrapFocused: {
+    borderColor: Colors.primary + '55',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 4,
   },
   inputIcon: { width: 20 },
   input: {
@@ -290,8 +310,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.sm,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 12,
   },
-  submitBtnDisabled: { opacity: 0.4 },
+  submitBtnDisabled: { opacity: 0.38, shadowOpacity: 0 },
   submitLabel: {
     fontFamily: Typography.headlineBold,
     fontSize: 16,

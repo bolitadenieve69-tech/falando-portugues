@@ -83,20 +83,27 @@ export default function SessionScreen() {
   const { isOnline } = useNetworkStatus();
 
   const scrollRef = useRef<ScrollView>(null);
+  const cleaningUpRef = useRef(false);
 
   // Auto-start session on mount
   useEffect(() => {
     const config: SessionConfig = { level: level as any, topic: topic as any };
     startSession(config);
-    return () => { endSession(); };
+    return () => {
+      if (!cleaningUpRef.current) {
+        cleaningUpRef.current = true;
+        endSession();
+      }
+    };
   }, []);
 
-  // Auto-scroll transcript
+  // Auto-navigate back on error
   useEffect(() => {
-    if (transcript.length > 0) {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    if (status === 'error') {
+      const t = setTimeout(() => router.back(), 3000);
+      return () => clearTimeout(t);
     }
-  }, [transcript.length]);
+  }, [status]);
 
   async function handleEndCall() {
     await endSession();
@@ -175,6 +182,7 @@ export default function SessionScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
         {/* Waveform + speaker info */}
         <View style={styles.voiceSection}>
@@ -412,6 +420,10 @@ const styles = StyleSheet.create({
     width: 5,
     borderRadius: 3,
     backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
   tutorInfo: { alignItems: 'center', gap: Spacing.sm },
   tutorAvatar: {
@@ -476,7 +488,11 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: BorderRadius.md,
     borderBottomLeftRadius: BorderRadius.md,
     borderLeftWidth: 2,
-    borderLeftColor: Colors.primaryContainer,
+    borderLeftColor: Colors.primary + '99',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
   },
   bubbleText: {
     fontFamily: Typography.body,
@@ -583,11 +599,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryContainer,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 20,
+    elevation: 10,
   },
   micButtonMuted: {
     backgroundColor: Colors.surfaceContainerHighest,
