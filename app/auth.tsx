@@ -76,6 +76,7 @@ export default function AuthScreen({
         <KeyboardAvoidingView
           style={styles.inner}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
         >
           {/* Header */}
           <View style={styles.header}>

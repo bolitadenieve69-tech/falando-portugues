@@ -1,5 +1,5 @@
 import { registerGlobals } from '@livekit/react-native';
-registerGlobals();
+try { registerGlobals(); } catch (_) {}
 
 import { useEffect } from 'react';
 import { installDebugLog } from '../src/features/debug/useDebugLog';
