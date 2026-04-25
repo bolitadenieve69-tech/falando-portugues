@@ -338,3 +338,30 @@ mobile/
 - Progress / stats screen (Phase 4)
 - Offline handling (Phase 4)
 - Push notifications
+
+---
+
+## Notes for Phase 3
+
+### Level Assessment (spoken)
+
+After registration, offer an optional spoken level test before the user picks their level manually.
+
+**Flow:**
+```
+Registration complete
+  └─ "Queres fazer o teste de nível?" (skip button available)
+  └─ Yes → special LiveKit session with assessment prompt
+           → structured questions covering: listening, pronunciation, grammar, vocabulary
+           → Claude evaluates responses + Deepgram confidence scores
+           → returns recommended level (A1–C2) + short justification
+           → auto-sets defaultLevel in Settings
+  └─ Skip → user picks level manually from Home
+```
+
+**Implementation notes:**
+- Assessment uses a separate system prompt (`prompts/assessment_pt.py`) with a fixed question script
+- Deepgram `confidence` field on transcription frames can signal pronunciation quality
+- Session ends automatically after ~5 minutes or when Claude signals assessment complete (via a structured JSON frame)
+- Result screen shows the recommended level with a brief explanation and a "Change" option before confirming
+- Re-assessment available from Settings at any time
