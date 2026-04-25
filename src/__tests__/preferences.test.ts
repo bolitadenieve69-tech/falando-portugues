@@ -1,21 +1,26 @@
 import { loadPreferences, savePreferences } from '../services/preferences';
 
-const mockStorage: Record<string, string> = {};
+const mockFs: Record<string, string> = {};
 
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn((key: string) => Promise.resolve(mockStorage[key] ?? null)),
-  setItem: jest.fn((key: string, value: string) => {
-    mockStorage[key] = value;
-    return Promise.resolve();
+jest.mock('expo-file-system', () => ({
+  documentDirectory: 'file:///mock-docs/',
+  getInfoAsync: jest.fn(async (uri: string) => ({
+    exists: uri in mockFs,
+    uri,
+  })),
+  readAsStringAsync: jest.fn(async (uri: string) => {
+    const val = mockFs[uri];
+    if (val === undefined) throw new Error('File not found');
+    return val;
   }),
-  removeItem: jest.fn((key: string) => {
-    delete mockStorage[key];
-    return Promise.resolve();
+  writeAsStringAsync: jest.fn(async (uri: string, content: string) => {
+    mockFs[uri] = content;
   }),
 }));
 
 beforeEach(() => {
-  Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
+  Object.keys(mockFs).forEach((k) => delete mockFs[k]);
+  jest.clearAllMocks();
 });
 
 describe('loadPreferences', () => {
@@ -28,7 +33,10 @@ describe('loadPreferences', () => {
   });
 
   it('merges stored values with defaults', async () => {
-    mockStorage['user_preferences'] = JSON.stringify({ level: 'A2', showTranscript: false });
+    mockFs['file:///mock-docs/user_preferences.json'] = JSON.stringify({
+      level: 'A2',
+      showTranscript: false,
+    });
     const prefs = await loadPreferences();
     expect(prefs.level).toBe('A2');
     expect(prefs.showTranscript).toBe(false);
@@ -36,7 +44,7 @@ describe('loadPreferences', () => {
   });
 
   it('returns defaults when stored JSON is malformed', async () => {
-    mockStorage['user_preferences'] = 'not-json{{{';
+    mockFs['file:///mock-docs/user_preferences.json'] = 'not-json{{{';
     const prefs = await loadPreferences();
     expect(prefs.level).toBe('B1');
   });
@@ -49,7 +57,7 @@ describe('loadPreferences', () => {
       showTranscript: false,
       autoCorrections: false,
     };
-    mockStorage['user_preferences'] = JSON.stringify(stored);
+    mockFs['file:///mock-docs/user_preferences.json'] = JSON.stringify(stored);
     const prefs = await loadPreferences();
     expect(prefs.level).toBe('C1');
     expect(prefs.defaultTopic).toBe('viagens');
@@ -60,7 +68,7 @@ describe('loadPreferences', () => {
 });
 
 describe('savePreferences', () => {
-  it('persists preferences to AsyncStorage', async () => {
+  it('persists preferences to FileSystem', async () => {
     const prefs = await loadPreferences();
     await savePreferences({ ...prefs, level: 'C2', showTranscript: false });
     const reloaded = await loadPreferences();

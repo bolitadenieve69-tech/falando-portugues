@@ -229,6 +229,12 @@ export default function SessionScreen() {
                     </View>
                     <Text style={styles.bubbleSpeakerLabel}>TUTOR</Text>
                   </View>
+                  {prefs.autoCorrections && entry.correction != null && (
+                    <View style={styles.correctionCallout}>
+                      <MaterialCommunityIcons name="auto-fix" size={14} color={Colors.tertiary} />
+                      <Text style={styles.correctionCalloutText}>{entry.correction}</Text>
+                    </View>
+                  )}
                   <View style={styles.tutorBubble}>
                     <TappableText text={entry.text} style={styles.bubbleText} />
                   </View>
@@ -242,12 +248,6 @@ export default function SessionScreen() {
                   <View style={styles.userBubble}>
                     <Text style={styles.userBubbleText}>{entry.text}</Text>
                   </View>
-                  {prefs.autoCorrections && entry.correction != null && (
-                    <View style={styles.correctionRow}>
-                      <MaterialCommunityIcons name="auto-fix" size={14} color={Colors.tertiary} />
-                      <Text style={styles.correctionText}>{entry.correction}</Text>
-                    </View>
-                  )}
                 </View>
               )
             )}
@@ -525,17 +525,26 @@ const styles = StyleSheet.create({
     color: Colors.onPrimaryContainer,
     lineHeight: 22,
   },
-  correctionRow: {
+  correctionCallout: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 6,
-    marginTop: 6,
+    backgroundColor: Colors.tertiaryContainer + 'CC',
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.tertiary,
+    borderTopRightRadius: BorderRadius.sm,
+    borderBottomRightRadius: BorderRadius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 6,
   },
-  correctionText: {
+  correctionCalloutText: {
     fontFamily: Typography.label,
     fontSize: 12,
-    color: Colors.tertiary + 'E6',
+    color: Colors.tertiary,
     fontStyle: 'italic',
+    flex: 1,
+    lineHeight: 18,
   },
 
   // Keyboard input panel
