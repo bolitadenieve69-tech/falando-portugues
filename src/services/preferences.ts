@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { UserLevel, ConversationTopic } from '../features/session/types';
 
 const PREFS_FILE = 'user_preferences.json';

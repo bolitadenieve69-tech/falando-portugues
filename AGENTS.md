@@ -1,4 +1,4 @@
-# Falando Portugues — Claude Code Instructions
+# Falando Portugues — Codex Instructions
 
 ## Project Overview
 
@@ -14,7 +14,7 @@ Mobile App (React Native + Expo)
                                          Python Backend (Pipecat)
                                            Deepgram STT
                                                ↓
-                                        Claude API (LLM tutor)
+                                        Codex API (LLM tutor)
                                                ↓
                                         ElevenLabs TTS
                                         (Portugal voice)
@@ -23,7 +23,7 @@ Mobile App (React Native + Expo)
 ### Why this stack
 - **Pipecat**: Industry-standard Python framework for real-time voice AI pipelines
 - **Deepgram**: Fastest STT, best end-of-speech detection (critical for low latency)
-- **Claude API** (`claude-haiku-4-5`): Tutor brain — corrects grammar, explains vocabulary
+- **Codex API** (`Codex-haiku-4-5`): Tutor brain — corrects grammar, explains vocabulary
 - **ElevenLabs** + Portugal voice + `eleven_multilingual_v2`: Authentic PT-PT accent
 - **LiveKit**: Production-grade WebRTC audio transport (no echo, no lag)
 
@@ -31,7 +31,7 @@ Mobile App (React Native + Expo)
 
 ```
 falando-portugues/
-├── CLAUDE.md
+├── AGENTS.md
 ├── .env.example
 │
 ├── backend/                    ← Python (Pipecat) server
@@ -70,7 +70,7 @@ falando-portugues/
 ## Key Decisions
 
 - **Voice first**: Primary UX is mic button → AI speaks back. Text transcript is secondary.
-- **Backend model**: `claude-haiku-4-5` (fast enough for real-time, 3x cheaper than Sonnet)
+- **Backend model**: `Codex-haiku-4-5` (fast enough for real-time, 3x cheaper than Sonnet)
 - **Portugal Portuguese only**: ElevenLabs voice ID must be PT-PT, not PT-BR
 - **Immutability**: Never mutate message arrays or state in place — always return new objects
 - **File size**: Max 400 lines per file. Extract early.
@@ -103,9 +103,9 @@ EXPO_PUBLIC_LIVEKIT_URL=     # wss://your-project.livekit.cloud
 - [ ] Test Pipecat "Hello World" script locally (mic → speaker on laptop)
 
 ### Phase 1 — Backend Pipeline
-- [ ] Pipecat pipeline: Deepgram STT → Claude → ElevenLabs TTS
+- [ ] Pipecat pipeline: Deepgram STT → Codex → ElevenLabs TTS
 - [ ] LiveKit transport layer
-- [ ] System prompt: Claude as strict but friendly PT-PT tutor
+- [ ] System prompt: Codex as strict but friendly PT-PT tutor
 - [ ] HTTP endpoint to create LiveKit room + return token to mobile
 
 ### Phase 2 — Mobile Foundation

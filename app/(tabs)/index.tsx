@@ -11,12 +11,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel, ConversationTopic } from '../../src/features/session/types';
-import { loadPreferences } from '../../src/services/preferences';
+import { loadPreferences, savePreferences } from '../../src/services/preferences';
 import { loadSessions, computeStats } from '../../src/services/history';
+import type { SessionRecord } from '../../src/services/history';
+import { LevelAssessmentCard } from '../../src/features/settings/components/LevelAssessmentCard';
 
 const LEVELS: UserLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const PORTUGAL_GREEN = '#046A38';
+const PORTUGAL_RED = '#D53244';
 
 interface TopicItem {
   key: ConversationTopic;
@@ -42,11 +47,14 @@ function greeting(): string {
 }
 
 export default function HomeScreen() {
+  const scrollRef = useRef<ScrollView>(null);
+  const [isAtEnd, setIsAtEnd] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<UserLevel>('B1');
   const [selectedTopic, setSelectedTopic] = useState<ConversationTopic | null>(null);
   const [streakDays, setStreakDays] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
   const [username, setUsername] = useState('');
+  const [lastSession, setLastSession] = useState<SessionRecord | null>(null);
 
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -56,6 +64,7 @@ export default function HomeScreen() {
       const stats = computeStats(sessions);
       setStreakDays(stats.streakDays);
       setTotalSessions(stats.totalSessions);
+      setLastSession(sessions[0] ?? null);
     });
     SecureStore.getItemAsync('auth_username').then((name) => setUsername(name ?? ''));
   }, []);
@@ -81,7 +90,14 @@ export default function HomeScreen() {
     } as any);
   }
 
+  function applyLevel(level: UserLevel) {
+    setSelectedLevel(level);
+    loadPreferences().then((prefs) => savePreferences({ ...prefs, level }));
+  }
+
   const initial = username ? username[0].toUpperCase() : '?';
+  const featuredTopics = TOPICS.filter((topic) => ['viagens', 'comida', 'cultura'].includes(topic.key));
+  const lastExcerpt = lastSession?.excerpt ?? 'Olá! Bem-vindo, tudo bem contigo?';
 
   return (
     <View style={styles.root}>
@@ -98,22 +114,68 @@ export default function HomeScreen() {
       </SafeAreaView>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces
+        alwaysBounceVertical
+        onScroll={(event) => {
+          const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+          setIsAtEnd(contentOffset.y + layoutMeasurement.height >= contentSize.height - 24);
+        }}
+        scrollEventThrottle={16}
       >
-        {/* Hero card */}
-        <TouchableOpacity style={styles.heroCard} onPress={handleStartSession} activeOpacity={0.88}>
-          <Animated.View style={[styles.pulseRing, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]} />
-          <View style={styles.micButton}>
-            <MaterialCommunityIcons name="microphone" size={36} color={Colors.primary} />
+        <View style={styles.lisbonCard}>
+          <LinearGradient
+            colors={[PORTUGAL_GREEN, '#6A5F38', PORTUGAL_RED]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.lisbonGradient}
+          >
+            <Text style={styles.lisbonEyebrow}>PORTUGUÊS EUROPEU</Text>
+            <Text style={styles.lisbonTitle}>Pratica como se estivesses em Lisboa</Text>
+          </LinearGradient>
+
+          <TouchableOpacity style={styles.startPanel} onPress={handleStartSession} activeOpacity={0.88}>
+            <Animated.View style={[styles.startPulse, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]} />
+            <View style={styles.startIcon}>
+              <Text style={styles.startIconEmoji}>🎙️</Text>
+            </View>
+            <View style={styles.startTextWrap}>
+              <Text style={styles.startTitle}>Começar agora</Text>
+              <Text style={styles.startSubtitle}>Tutor Patrício · {selectedLevel}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.featuredTopicsRow}>
+            {featuredTopics.map((topic) => {
+              const active = selectedTopic === topic.key;
+              return (
+                <TouchableOpacity
+                  key={topic.key}
+                  style={[styles.featuredTopicChip, active && styles.featuredTopicChipActive]}
+                  onPress={() => setSelectedTopic(active ? null : topic.key)}
+                  activeOpacity={0.78}
+                >
+                  <Text style={[styles.featuredTopicText, active && styles.featuredTopicTextActive]}>
+                    {topic.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          <Text style={styles.heroText}>
-            Toca para começar a praticar{'\n'}
-            <Text style={styles.heroHighlight}>português europeu</Text>
-            {' '}agora
-          </Text>
-        </TouchableOpacity>
+
+          <View style={styles.lastConversationCard}>
+            <Text style={styles.lastConversationLabel}>ÚLTIMA CONVERSA</Text>
+            <Text style={styles.lastConversationText} numberOfLines={2}>"{lastExcerpt}"</Text>
+          </View>
+        </View>
+
+        <LevelAssessmentCard
+          currentLevel={selectedLevel}
+          onApplyLevel={applyLevel}
+        />
 
         {/* Level */}
         <View style={styles.section}>
@@ -121,14 +183,14 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>O meu nível</Text>
             <Text style={styles.sectionBadge}>PROGRESSO</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelRow}>
+          <View style={styles.levelRow}>
             {LEVELS.map((level) => {
               const active = selectedLevel === level;
               return (
                 <TouchableOpacity
                   key={level}
                   style={[styles.levelChip, active && styles.levelChipActive]}
-                  onPress={() => setSelectedLevel(level)}
+                  onPress={() => applyLevel(level)}
                 >
                   <Text style={[styles.levelChipText, active && styles.levelChipTextActive]}>
                     {level}
@@ -136,7 +198,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
         {/* Topics */}
@@ -148,7 +210,7 @@ export default function HomeScreen() {
               return (
                 <TouchableOpacity
                   key={topic.key}
-                  style={[styles.topicCard, isActive && { backgroundColor: topic.accent + '22', borderColor: topic.accent + '66' }]}
+                  style={[styles.topicCard, isActive && { backgroundColor: topic.accent + '22', borderColor: topic.accent + '88' }]}
                   onPress={() => setSelectedTopic(isActive ? null : topic.key)}
                   activeOpacity={0.75}
                 >
@@ -176,8 +238,22 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 48 }} />
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.scrollToEndButton}
+        onPress={() => {
+          if (isAtEnd) {
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+          } else {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
+        activeOpacity={0.82}
+      >
+        <MaterialCommunityIcons name={isAtEnd ? 'arrow-up' : 'arrow-down'} size={22} color={Colors.onPrimary} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -222,20 +298,177 @@ const styles = StyleSheet.create({
   },
 
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: Spacing.lg },
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
+  },
+
+  lisbonCard: {
+    backgroundColor: Colors.surfaceContainerLowest,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.secondary + '18',
+  },
+  lisbonGradient: {
+    minHeight: 190,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
+    paddingBottom: 74,
+  },
+  lisbonEyebrow: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 12,
+    letterSpacing: 4,
+    color: Colors.onSurface + 'D8',
+    marginBottom: Spacing.sm,
+  },
+  lisbonTitle: {
+    fontFamily: Typography.headline,
+    fontSize: 34,
+    lineHeight: 40,
+    color: Colors.onSurface,
+    maxWidth: 300,
+  },
+  startPanel: {
+    marginTop: -50,
+    marginHorizontal: Spacing.lg,
+    minHeight: 136,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surfaceContainerLow,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+  },
+  startPulse: {
+    position: 'absolute',
+    left: Spacing.lg + 10,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: Colors.primary + '18',
+  },
+  startIcon: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startIconEmoji: {
+    fontSize: 44,
+    lineHeight: 50,
+  },
+  startTextWrap: { flex: 1, minWidth: 0 },
+  startTitle: {
+    fontFamily: Typography.headline,
+    fontSize: 28,
+    lineHeight: 32,
+    color: Colors.onSurface,
+  },
+  startSubtitle: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 15,
+    color: Colors.onSurfaceVariant,
+    marginTop: 4,
+  },
+  featuredTopicsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  featuredTopicChip: {
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    backgroundColor: Colors.surfaceContainerLow,
+  },
+  featuredTopicChipActive: {
+    backgroundColor: Colors.primary,
+  },
+  featuredTopicText: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 18,
+    color: Colors.onSurface,
+  },
+  featuredTopicTextActive: {
+    color: Colors.onPrimary,
+  },
+  lastConversationCard: {
+    margin: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    backgroundColor: Colors.surfaceContainerLow,
+  },
+  lastConversationLabel: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 11,
+    letterSpacing: 3,
+    color: Colors.onSurfaceVariant,
+    marginBottom: Spacing.sm,
+  },
+  lastConversationText: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 18,
+    lineHeight: 26,
+    color: Colors.onSurface,
+  },
 
   heroCard: {
-    backgroundColor: Colors.surfaceContainerLow,
+    backgroundColor: Colors.surfaceContainer,
     borderRadius: BorderRadius.lg,
     padding: Spacing.xl,
     alignItems: 'center',
     marginBottom: Spacing.xl,
     borderWidth: 1,
-    borderColor: Colors.primary + '1A',
+    borderColor: Colors.secondary + '22',
     overflow: 'hidden',
-    minHeight: 200,
+    minHeight: 250,
     justifyContent: 'center',
     gap: Spacing.lg,
+  },
+  heroAccentRow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    flexDirection: 'row',
+  },
+  heroAccentGreen: { flex: 3, backgroundColor: PORTUGAL_GREEN },
+  heroAccentRed: { flex: 2, backgroundColor: PORTUGAL_RED },
+  heroTopRow: {
+    position: 'absolute',
+    top: Spacing.md,
+    left: Spacing.md,
+    right: Spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: Colors.surfaceContainerHighest + 'AA',
+    borderWidth: 1,
+    borderColor: Colors.outlineVariant + '66',
+  },
+  heroBadgeText: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 11,
+    color: Colors.secondary,
   },
   pulseRing: {
     position: 'absolute',
@@ -248,7 +481,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primaryContainer,
+    backgroundColor: PORTUGAL_GREEN,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: Colors.primary,
@@ -257,16 +490,49 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
+  heroCopy: { alignItems: 'center', gap: Spacing.sm },
+  heroTitle: {
+    fontFamily: Typography.headline,
+    fontSize: 26,
+    lineHeight: 32,
+    color: Colors.onSurface,
+    textAlign: 'center',
+  },
   heroText: {
     fontFamily: Typography.body,
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.onSurfaceVariant,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    maxWidth: 280,
   },
-  heroHighlight: {
-    fontFamily: Typography.headlineBold,
+  heroMetaRow: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  heroMetaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.primary + '12',
+  },
+  heroMetaText: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 12,
     color: Colors.primary,
+  },
+  heroHint: {
+    flexShrink: 1,
+    fontFamily: Typography.labelMedium,
+    fontSize: 12,
+    color: Colors.onSurfaceVariant,
+    textAlign: 'right',
   },
 
   section: { marginBottom: Spacing.xl },
@@ -288,9 +554,16 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
 
-  levelRow: { gap: 8, paddingVertical: 4 },
+  levelRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
   levelChip: {
-    paddingHorizontal: 20,
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    paddingHorizontal: 8,
     paddingVertical: 10,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.surfaceContainerHighest,
@@ -311,7 +584,7 @@ const styles = StyleSheet.create({
   },
   topicCard: {
     width: '31%',
-    aspectRatio: 0.9,
+    minHeight: 112,
     borderRadius: BorderRadius.md,
     backgroundColor: Colors.surfaceContainerLow,
     borderWidth: 1,
@@ -328,7 +601,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   topicLabel: {
-    fontFamily: Typography.body,
+    fontFamily: Typography.labelMedium,
     fontSize: 12,
     color: Colors.onSurface,
     textAlign: 'center',
@@ -356,5 +629,21 @@ const styles = StyleSheet.create({
     fontFamily: Typography.label,
     fontSize: 11,
     color: Colors.onSurfaceVariant,
+  },
+  scrollToEndButton: {
+    position: 'absolute',
+    right: Spacing.lg,
+    bottom: 96,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });

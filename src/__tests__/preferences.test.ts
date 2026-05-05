@@ -2,7 +2,7 @@ import { loadPreferences, savePreferences } from '../services/preferences';
 
 const mockFs: Record<string, string> = {};
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
   documentDirectory: 'file:///mock-docs/',
   getInfoAsync: jest.fn(async (uri: string) => ({
     exists: uri in mockFs,

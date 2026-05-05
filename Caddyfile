@@ -1,0 +1,4 @@
+37-27-196-137.nip.io {
+  encode gzip zstd
+  reverse_proxy backend:8000
+}

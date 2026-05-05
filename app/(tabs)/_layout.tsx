@@ -1,32 +1,21 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { Colors, Typography } from '../../src/constants/theme';
+import { Colors } from '../../src/constants/theme';
 
 interface TabIconProps {
   name: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-  label: string;
   focused: boolean;
 }
 
-function TabIcon({ name, label, focused }: TabIconProps) {
-  if (focused) {
-    return (
-      <View style={styles.activeTab}>
-        <MaterialCommunityIcons name={name} size={22} color={Colors.primary} />
-        <Text style={styles.activeLabel}>{label}</Text>
-      </View>
-    );
-  }
+function TabIcon({ name, focused }: TabIconProps) {
   return (
-    <View style={styles.inactiveTab}>
+    <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
       <MaterialCommunityIcons
         name={name}
-        size={22}
-        color={Colors.primary + '66'}
+        size={24}
+        color={focused ? Colors.onPrimary : Colors.primary + '99'}
       />
-      <Text style={styles.inactiveLabel}>{label}</Text>
     </View>
   );
 }
@@ -37,37 +26,37 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarBackground: () => (
-          <BlurView
-            intensity={80}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-        ),
-        tabBarShowLabel: false,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.primary + '88',
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
+          title: 'Início',
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="home" label="Início" focused={focused} />
+            <TabIcon name="home" focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
+          title: 'Histórico',
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="history" label="Histórico" focused={focused} />
+            <TabIcon name="history" focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
+          title: 'Definições',
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="cog" label="Definições" focused={focused} />
+            <TabIcon name="cog" focused={focused} />
           ),
         }}
       />
@@ -77,45 +66,35 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    position: 'absolute',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    borderTopWidth: 0,
-    height: Platform.OS === 'ios' ? 88 : 72,
-    backgroundColor: 'transparent',
+    borderTopWidth: 1,
+    borderTopColor: Colors.outlineVariant + '33',
+    height: Platform.OS === 'ios' ? 84 : 68,
+    backgroundColor: Colors.surfaceContainerLow,
     elevation: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
   },
-  activeTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.primaryContainer,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  tabItem: {
+    paddingTop: 7,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+  },
+  tabIcon: {
+    width: 44,
+    height: 34,
     borderRadius: 9999,
-  },
-  activeLabel: {
-    fontFamily: Typography.label,
-    fontSize: 10,
-    color: Colors.primary,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  inactiveTab: {
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    justifyContent: 'center',
   },
-  inactiveLabel: {
-    fontFamily: Typography.label,
+  tabIconActive: {
+    backgroundColor: Colors.primary,
+  },
+  tabLabel: {
     fontSize: 10,
-    color: Colors.primary + '66',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    fontWeight: '700',
     marginTop: 2,
   },
 });

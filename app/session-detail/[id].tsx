@@ -8,10 +8,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import { loadSessions } from '../../src/services/history';
 import type { SessionRecord } from '../../src/services/history';
+
+const WARM_GREEN = '#046A38';
+const WARM_RED = '#D53244';
 
 const TOPIC_ICONS: Record<string, React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   viagens: 'airplane',
@@ -123,7 +127,12 @@ export default function SessionDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero card */}
-        <View style={styles.heroCard}>
+        <LinearGradient
+          colors={[WARM_GREEN, '#4D5934', WARM_RED]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.heroCard}
+        >
           <View style={styles.heroTop}>
             <View style={styles.topicIconWrap}>
               <MaterialCommunityIcons name={icon} size={32} color={Colors.primary} />
@@ -147,7 +156,7 @@ export default function SessionDetailScreen() {
               <Text style={styles.excerptText}>{session.excerpt}</Text>
             </View>
           ) : null}
-        </View>
+        </LinearGradient>
 
         {/* Stats */}
         <Text style={styles.sectionTitle}>Estatísticas</Text>
@@ -220,17 +229,17 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
 
   heroCard: {
-    backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
     marginBottom: Spacing.xl,
+    overflow: 'hidden',
   },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   topicIconWrap: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.primaryContainer,
+    backgroundColor: Colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -250,12 +259,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surfaceContainerHighest,
+    backgroundColor: Colors.primary,
   },
   levelBadgeText: {
     fontFamily: Typography.headlineBold,
     fontSize: 13,
-    color: Colors.primary,
+    color: Colors.onPrimary,
   },
   excerptBox: {
     flexDirection: 'row',
@@ -264,12 +273,12 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: Colors.outlineVariant + '1A',
+    borderTopColor: Colors.onSurface + '1F',
   },
   excerptText: {
     fontFamily: Typography.body,
     fontSize: 14,
-    color: Colors.onSurfaceVariant,
+    color: Colors.onSurface,
     fontStyle: 'italic',
     flex: 1,
     lineHeight: 20,

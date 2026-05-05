@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -13,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Typography, BorderRadius, Spacing } from '../src/constants/theme';
+
+const BUILDER_LOGO = require('../assets/ag-ai-agency-logo.png');
 
 type Mode = 'register' | 'login';
 
@@ -55,6 +58,13 @@ export default function AuthScreen({
     onClearError();
   }
 
+  function fillTestAccess(nextMode: Mode = 'register') {
+    setMode(nextMode);
+    setUsername('Angel');
+    setPassword('1234');
+    onClearError();
+  }
+
   async function handleSubmit() {
     if (isLoading) return;
     onClearError();
@@ -81,7 +91,7 @@ export default function AuthScreen({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoWrap}>
-              <MaterialCommunityIcons name="microphone-variant" size={36} color={Colors.primary} />
+              <Text style={styles.logoEmoji}>🎙️</Text>
             </View>
             <Text style={styles.appName}>Falando Português</Text>
             <Text style={styles.appTagline}>O teu tutor de português europeu</Text>
@@ -111,6 +121,15 @@ export default function AuthScreen({
 
           {/* Form */}
           <Animated.View style={[styles.form, { transform: [{ translateX: shakeAnim }] }]}>
+            <TouchableOpacity
+              style={styles.testAccessButton}
+              onPress={() => fillTestAccess(mode)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="key-variant" size={18} color={Colors.primary} />
+              <Text style={styles.testAccessText}>Usar acesso de teste</Text>
+            </TouchableOpacity>
+
             {mode === 'register' && (
               <View style={[styles.inputWrap, focusedInput === 'username' && styles.inputWrapFocused]}>
                 <MaterialCommunityIcons
@@ -187,14 +206,21 @@ export default function AuthScreen({
                 </Text>
               )}
             </TouchableOpacity>
+
+            {mode === 'register' ? (
+              <TouchableOpacity onPress={() => fillTestAccess('login')} activeOpacity={0.8}>
+                <Text style={styles.modeHint}>Se já existe, tocar aqui para entrar com 1234</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={() => fillTestAccess('register')} activeOpacity={0.8}>
+                <Text style={styles.modeHint}>Se ainda não existe, tocar aqui para criar com 1234</Text>
+              </TouchableOpacity>
+            )}
           </Animated.View>
 
-          {/* Device note */}
-          <View style={styles.deviceNote}>
-            <MaterialCommunityIcons name="cellphone-lock" size={14} color={Colors.outline} />
-            <Text style={styles.deviceNoteText}>
-              Acesso exclusivo para este aparelho
-            </Text>
+          <View style={styles.builderMark}>
+            <Image source={BUILDER_LOGO} style={styles.builderLogo} resizeMode="contain" />
+            <Text style={styles.builderText}>Built by AG AI Agency</Text>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -217,7 +243,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.primaryContainer,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
@@ -226,6 +252,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 28,
     elevation: 12,
+  },
+  logoEmoji: {
+    fontSize: 40,
+    lineHeight: 46,
   },
   appName: {
     fontFamily: Typography.headlineBold,
@@ -264,6 +294,22 @@ const styles = StyleSheet.create({
   },
 
   form: { gap: Spacing.md },
+  testAccessButton: {
+    height: 46,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary + '14',
+    borderWidth: 1,
+    borderColor: Colors.primary + '33',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  testAccessText: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 14,
+    color: Colors.primary,
+  },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -324,15 +370,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.3,
   },
+  modeHint: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 12,
+    color: Colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
 
-  deviceNote: {
-    flexDirection: 'row',
+  builderMark: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: Spacing.xs,
   },
-  deviceNoteText: {
-    fontFamily: Typography.label,
+  builderLogo: {
+    width: 86,
+    height: 86,
+    opacity: 0.9,
+  },
+  builderText: {
+    fontFamily: Typography.labelMedium,
     fontSize: 11,
     color: Colors.outline,
     letterSpacing: 0.5,

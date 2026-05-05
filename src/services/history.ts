@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { UserLevel, ConversationTopic } from '../features/session/types';
 
 const HISTORY_FILE = 'session_history.json';
@@ -23,7 +23,8 @@ function historyUri(): string {
 export async function saveSession(record: SessionRecord): Promise<void> {
   try {
     const existing = await loadSessions();
-    const updated = [record, ...existing].slice(0, MAX_SESSIONS);
+    const nextRecord = ensureUniqueId(record, existing);
+    const updated = [nextRecord, ...existing].slice(0, MAX_SESSIONS);
     await FileSystem.writeAsStringAsync(historyUri(), JSON.stringify(updated));
   } catch {
     // Storage not available — skip silently
@@ -106,4 +107,12 @@ function computeStreak(sessions: SessionRecord[]): number {
     else break;
   }
   return streak;
+}
+
+function ensureUniqueId(record: SessionRecord, existing: SessionRecord[]): SessionRecord {
+  if (!existing.some((s) => s.id === record.id)) return record;
+  return {
+    ...record,
+    id: `${record.id}-${Date.now()}-${existing.length}`,
+  };
 }

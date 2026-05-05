@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import {
   View,
@@ -9,9 +9,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import { loadSessions, computeStats } from '../../src/services/history';
 import type { SessionRecord, TopicStat } from '../../src/services/history';
+
+const WARM_GREEN = '#046A38';
 
 const TOPIC_ICONS: Record<string, React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   viagens: 'airplane',
@@ -47,6 +50,8 @@ function formatDuration(seconds: number): string {
 }
 
 export default function HistoryScreen() {
+  const scrollRef = useRef<ScrollView>(null);
+  const [isAtEnd, setIsAtEnd] = useState(false);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [stats, setStats] = useState({ totalSessions: 0, accuracy: 0, streakDays: 0, byTopic: [] as TopicStat[] });
 
@@ -84,27 +89,67 @@ export default function HistoryScreen() {
       </SafeAreaView>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces
+        alwaysBounceVertical
+        onScroll={(event) => {
+          const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+          setIsAtEnd(contentOffset.y + layoutMeasurement.height >= contentSize.height - 24);
+        }}
+        scrollEventThrottle={16}
       >
-        {/* Stats row */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.statsRow}
+        <LinearGradient
+          colors={[WARM_GREEN, '#4D5934', '#D53244']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.progressHero}
         >
+          <Text style={styles.progressEyebrow}>O TEU PORTUGUÊS</Text>
+          <Text style={styles.progressTitle}>Cada conversa conta.</Text>
+          <View style={styles.progressHeroFooter}>
+            <View>
+              <Text style={styles.progressNumber}>{stats.totalSessions}</Text>
+              <Text style={styles.progressCaption}>conversas</Text>
+            </View>
+            <View style={styles.progressBadge}>
+              <MaterialCommunityIcons name="chart-line" size={16} color={Colors.onPrimary} />
+              <Text style={styles.progressBadgeText}>{stats.accuracy}% precisão</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.statsGrid}>
           {[
-            { label: 'Conversas', value: String(stats.totalSessions) },
-            { label: 'Precisão', value: `${stats.accuracy}%` },
-            { label: 'Dias seguidos', value: String(stats.streakDays) },
+            { label: 'Conversas', value: String(stats.totalSessions), icon: 'forum-outline', color: Colors.primary },
+            { label: 'Precisão', value: `${stats.accuracy}%`, icon: 'target', color: Colors.secondary },
+            { label: 'Dias seguidos', value: String(stats.streakDays), icon: 'fire', color: Colors.tertiary },
           ].map((stat) => (
             <View key={stat.label} style={styles.statCard}>
-              <Text style={styles.statLabel}>{stat.label.toUpperCase()}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
+              <View style={[styles.statIconWrap, { backgroundColor: stat.color + '16' }]}>
+                <MaterialCommunityIcons name={stat.icon as any} size={18} color={stat.color} />
+              </View>
+              <Text style={styles.statLabel} numberOfLines={2}>{stat.label.toUpperCase()}</Text>
+              <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
             </View>
           ))}
-        </ScrollView>
+        </View>
+
+        {sessions.length > 0 && (
+          <View style={styles.coachNote}>
+            <View style={styles.coachIcon}>
+              <MaterialCommunityIcons name="heart-outline" size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.coachTextWrap}>
+              <Text style={styles.coachTitle}>Bom ritmo</Text>
+              <Text style={styles.coachText}>
+                O próximo passo é manter conversas curtas e constantes.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Topic breakdown */}
         {stats.byTopic.length > 0 && (
@@ -129,20 +174,38 @@ export default function HistoryScreen() {
             {recent.length > 0 && (
               <>
                 <Text style={styles.groupLabel}>RECENTE</Text>
-                {recent.map((s) => <SessionCardItem key={s.id} session={s} />)}
+                {recent.map((s, index) => (
+                  <SessionCardItem key={`${s.id}-${s.startedAt}-${index}`} session={s} />
+                ))}
               </>
             )}
             {older.length > 0 && (
               <>
                 <Text style={[styles.groupLabel, { marginTop: Spacing.xl }]}>ANTERIOR</Text>
-                {older.map((s) => <SessionCardItem key={s.id} session={s} />)}
+                {older.map((s, index) => (
+                  <SessionCardItem key={`${s.id}-${s.startedAt}-${index}`} session={s} />
+                ))}
               </>
             )}
           </>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 48 }} />
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.scrollToEndButton}
+        onPress={() => {
+          if (isAtEnd) {
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+          } else {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
+        activeOpacity={0.82}
+      >
+        <MaterialCommunityIcons name={isAtEnd ? 'arrow-up' : 'arrow-down'} size={22} color={Colors.onPrimary} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -154,8 +217,8 @@ function TopicProgressRow({ stat }: { stat: TopicStat }) {
 
   return (
     <View style={styles.topicRow}>
-      <MaterialCommunityIcons name={icon} size={16} color={Colors.onSurfaceVariant} style={{ width: 20 }} />
-      <Text style={styles.topicRowLabel}>{label}</Text>
+      <MaterialCommunityIcons name={icon} size={16} color={Colors.secondary} style={{ width: 20 }} />
+      <Text style={styles.topicRowLabel} numberOfLines={1}>{label}</Text>
       <View style={styles.topicBarTrack}>
         <View style={[styles.topicBarFill, { width: `${stat.accuracy}%` as any, backgroundColor: barColor }]} />
       </View>
@@ -179,7 +242,7 @@ function SessionCardItem({ session }: { session: SessionRecord }) {
       <View style={styles.cardTop}>
         <View style={styles.cardLeft}>
           <View style={styles.topicIcon}>
-            <MaterialCommunityIcons name={icon} size={22} color={Colors.primary} />
+            <MaterialCommunityIcons name={icon} size={22} color={Colors.onSurface} />
           </View>
           <View>
             <Text style={styles.cardTopic}>{label}</Text>
@@ -234,13 +297,87 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
-  statsRow: { gap: Spacing.md, paddingBottom: Spacing.md },
-  statCard: {
-    backgroundColor: Colors.surfaceContainerLow,
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
+  },
+  progressHero: {
+    borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
+    minHeight: 190,
+    justifyContent: 'space-between',
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+  },
+  progressEyebrow: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 11,
+    letterSpacing: 3,
+    color: Colors.onSurface + 'D8',
+  },
+  progressTitle: {
+    fontFamily: Typography.headline,
+    fontSize: 34,
+    lineHeight: 39,
+    color: Colors.onSurface,
+    maxWidth: 260,
+  },
+  progressHeroFooter: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+  },
+  progressNumber: {
+    fontFamily: Typography.headline,
+    fontSize: 34,
+    lineHeight: 38,
+    color: Colors.onSurface,
+  },
+  progressCaption: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 12,
+    color: Colors.onSurface + 'CC',
+  },
+  progressBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.primary,
+  },
+  progressBadgeText: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 12,
+    color: Colors.onPrimary,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+    paddingBottom: Spacing.md,
+  },
+  statCard: {
+    backgroundColor: Colors.surfaceContainer,
+    padding: Spacing.md,
     borderRadius: BorderRadius.md,
-    minWidth: 140,
+    flexGrow: 1,
+    flexBasis: '46%',
+    minHeight: 118,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: Colors.secondary + '18',
+  },
+  statIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
   },
   statLabel: {
     fontFamily: Typography.label,
@@ -251,9 +388,40 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontFamily: Typography.headline,
-    fontSize: 36,
-    color: Colors.primary,
-    lineHeight: 40,
+    fontSize: 34,
+    lineHeight: 38,
+  },
+  coachNote: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.primary + '18',
+    marginBottom: Spacing.md,
+  },
+  coachIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: WARM_GREEN,
+  },
+  coachTextWrap: { flex: 1 },
+  coachTitle: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 14,
+    color: Colors.onSurface,
+  },
+  coachText: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.onSurfaceVariant,
+    lineHeight: 18,
+    marginTop: 2,
   },
   groupLabel: {
     fontFamily: Typography.label,
@@ -282,10 +450,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: Colors.surfaceContainerLow,
+    backgroundColor: Colors.surfaceContainer,
     borderRadius: BorderRadius.md,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.secondary + '16',
   },
   cardTop: {
     flexDirection: 'row',
@@ -298,7 +468,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primaryContainer,
+    backgroundColor: WARM_GREEN,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -317,7 +487,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surfaceContainerHighest,
+    backgroundColor: Colors.primary + '16',
   },
   levelBadgeText: {
     fontFamily: Typography.headlineBold,
@@ -358,11 +528,13 @@ const styles = StyleSheet.create({
 
   // Topic breakdown
   topicBreakdown: {
-    backgroundColor: Colors.surfaceContainerLow,
+    backgroundColor: Colors.surfaceContainer,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginBottom: Spacing.xl,
     gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.secondary + '16',
   },
   topicRow: {
     flexDirection: 'row',
@@ -391,5 +563,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     width: 36,
     textAlign: 'right',
+  },
+  scrollToEndButton: {
+    position: 'absolute',
+    right: Spacing.lg,
+    bottom: 96,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });

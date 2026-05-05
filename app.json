@@ -18,10 +18,15 @@
       "bundleIdentifier": "com.anguerrig.falandoportugues",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
         "NSMicrophoneUsageDescription": "Falando Português usa o microfone para praticar conversação em português com o tutor de IA."
       }
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#121412"

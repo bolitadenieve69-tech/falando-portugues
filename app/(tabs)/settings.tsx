@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useVoicePreview } from '../../src/features/settings/hooks/useVoicePreview';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -12,11 +13,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel } from '../../src/features/session/types';
 import { loadPreferences, savePreferences } from '../../src/services/preferences';
 import { clearHistory } from '../../src/services/history';
 import { clearAuthData } from '../../src/features/auth/services/authService';
+import { LevelAssessmentCard } from '../../src/features/settings/components/LevelAssessmentCard';
+
+const WARM_GREEN = '#046A38';
+const WARM_RED = '#D53244';
+const BUILDER_LOGO = require('../../assets/ag-ai-agency-logo.png');
 
 const LEVELS: { key: UserLevel; label: string; desc: string }[] = [
   { key: 'A1', label: 'A1', desc: 'Iniciante' },
@@ -42,6 +49,8 @@ const TUTOR_VOICES: TutorVoice[] = [
 ];
 
 export default function SettingsScreen() {
+  const scrollRef = useRef<ScrollView>(null);
+  const [isAtEnd, setIsAtEnd] = useState(false);
   const [level, setLevel] = useState<UserLevel>('B1');
   const [selectedVoice, setSelectedVoice] = useState('tiago');
   const [showTranscript, setShowTranscript] = useState(true);
@@ -109,15 +118,44 @@ export default function SettingsScreen() {
             <MaterialCommunityIcons name="arrow-left" size={24} color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Definições</Text>
-          <View style={styles.avatar} />
+          <TouchableOpacity style={styles.logoutIconButton} onPress={handleLogout} hitSlop={8}>
+            <MaterialCommunityIcons name="logout" size={20} color={Colors.tertiary} />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces
+        alwaysBounceVertical
+        keyboardShouldPersistTaps="handled"
+        onScroll={(event) => {
+          const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+          setIsAtEnd(contentOffset.y + layoutMeasurement.height >= contentSize.height - 24);
+        }}
+        scrollEventThrottle={16}
       >
+        <LinearGradient
+          colors={[WARM_GREEN, '#5D6538', WARM_RED]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.settingsHero}
+        >
+          <Text style={styles.settingsHeroEyebrow}>AJUSTES DO TUTOR</Text>
+          <Text style={styles.settingsHeroTitle}>Deixa o Patrício falar contigo ao teu ritmo.</Text>
+        </LinearGradient>
+
+        <LevelAssessmentCard
+          currentLevel={level}
+          onApplyLevel={(nextLevel) => {
+            setLevel(nextLevel);
+            persist({ level: nextLevel });
+          }}
+        />
+
         {/* Level */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>O meu nível</Text>
@@ -318,8 +356,28 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>TERMINAR SESSÃO</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 100 }} />
+        <View style={styles.builderCard}>
+          <Image source={BUILDER_LOGO} style={styles.builderLogo} resizeMode="contain" />
+          <Text style={styles.builderTitle}>AG AI Agency</Text>
+          <Text style={styles.builderSubtitle}>Builder da experiência Falando Português</Text>
+        </View>
+
+        <View style={{ height: 48 }} />
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.scrollToEndButton}
+        onPress={() => {
+          if (isAtEnd) {
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+          } else {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
+        activeOpacity={0.82}
+      >
+        <MaterialCommunityIcons name={isAtEnd ? 'arrow-up' : 'arrow-down'} size={22} color={Colors.onPrimary} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -340,16 +398,43 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     letterSpacing: -0.5,
   },
-  avatar: {
+  logoutIconButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.surfaceContainerHighest,
+    backgroundColor: Colors.tertiaryContainer + '55',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.outlineVariant + '33',
+    borderColor: Colors.tertiary + '22',
   },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
+  },
+  settingsHero: {
+    borderRadius: BorderRadius.lg,
+    minHeight: 180,
+    padding: Spacing.lg,
+    justifyContent: 'flex-end',
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+  },
+  settingsHeroEyebrow: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 11,
+    letterSpacing: 3,
+    color: Colors.onSurface + 'D8',
+    marginBottom: Spacing.sm,
+  },
+  settingsHeroTitle: {
+    fontFamily: Typography.headline,
+    fontSize: 30,
+    lineHeight: 36,
+    color: Colors.onSurface,
+  },
 
   sectionHeader: {
     flexDirection: 'row',
@@ -411,11 +496,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceContainer,
+    borderWidth: 1,
+    borderColor: Colors.secondary + '16',
   },
   voiceCardSelected: {
-    backgroundColor: Colors.surfaceContainerLowest,
+    backgroundColor: Colors.surfaceContainerLow,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
@@ -482,9 +569,11 @@ const styles = StyleSheet.create({
 
   // Preferences
   prefCard: {
-    backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surfaceContainer,
+    borderRadius: BorderRadius.md,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.secondary + '16',
   },
   prefRow: {
     flexDirection: 'row',
@@ -523,5 +612,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.tertiary,
     letterSpacing: 3,
+  },
+  builderCard: {
+    marginTop: Spacing.xl,
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceContainer,
+    borderWidth: 1,
+    borderColor: Colors.secondary + '16',
+  },
+  builderLogo: {
+    width: 128,
+    height: 128,
+    opacity: 0.92,
+  },
+  builderTitle: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 16,
+    color: Colors.onSurface,
+    marginTop: Spacing.sm,
+  },
+  builderSubtitle: {
+    fontFamily: Typography.label,
+    fontSize: 12,
+    color: Colors.onSurfaceVariant,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  scrollToEndButton: {
+    position: 'absolute',
+    right: Spacing.lg,
+    bottom: 96,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });

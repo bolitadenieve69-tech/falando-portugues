@@ -38,10 +38,13 @@ mobile/.env
 
 # Python virtualenv
 luso_tutor/
+luso_tutor*/
 venv/
 .venv/
 __pycache__/
 *.py[cod]
+.coverage
+.pytest_cache/
 
 # typescript
 *.tsbuildinfo
@@ -50,4 +53,9 @@ __pycache__/
 /ios
 /android
 backend/falando.db
+falando.db
 .env.local
+
+# local agent/app settings
+.claude/
+.codex/

@@ -4,6 +4,9 @@
   "main": "index.ts",
   "scripts": {
     "test": "jest",
+    "test:mobile": "npm --prefix mobile test",
+    "ts": "tsc --noEmit",
+    "ts:mobile": "npm --prefix mobile run ts",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -47,8 +50,10 @@
   "jest": {
     "preset": "jest-expo",
     "testMatch": [
-      "**/__tests__/**/*.test.ts",
-      "**/__tests__/**/*.test.tsx"
+      "<rootDir>/src/**/__tests__/**/*.test.ts",
+      "<rootDir>/src/**/__tests__/**/*.test.tsx",
+      "<rootDir>/app/**/__tests__/**/*.test.ts",
+      "<rootDir>/app/**/__tests__/**/*.test.tsx"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)"

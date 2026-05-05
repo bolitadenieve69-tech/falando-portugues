@@ -193,7 +193,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
       const corrections = current.filter((e) => e.correction != null).length;
       const excerpt = current.find((e) => e.speaker === 'tutor')?.text ?? '';
       await saveSession({
-        id: `${sessionStartRef.current}`,
+        id: `${sessionStartRef.current}-${endedAt}`,
         topic: config.topic,
         level: config.level,
         startedAt: sessionStartRef.current,

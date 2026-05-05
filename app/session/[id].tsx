@@ -15,6 +15,7 @@ import {
 import { DebugPanel } from '../../src/features/debug/DebugPanel';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import { useVoiceSession } from '../../src/features/session/hooks/useVoiceSession';
@@ -25,6 +26,8 @@ import type { SessionConfig } from '../../src/features/session/types';
 import type { UserPreferences } from '../../src/services/preferences';
 
 const WAVEFORM_COUNT = 11;
+const WARM_GREEN = '#046A38';
+const WARM_RED = '#D53244';
 
 function WaveformBar({ delay, active }: { delay: number; active: boolean }) {
   const anim = useRef(new Animated.Value(10)).current;
@@ -185,7 +188,12 @@ export default function SessionScreen() {
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
         {/* Waveform + speaker info */}
-        <View style={styles.voiceSection}>
+        <LinearGradient
+          colors={[WARM_GREEN, '#445B35', WARM_RED]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.sessionHero}
+        >
           <View style={styles.waveform}>
             {Array.from({ length: WAVEFORM_COUNT }).map((_, i) => (
               <WaveformBar key={i} delay={i * 80} active={waveformActive} />
@@ -209,7 +217,7 @@ export default function SessionScreen() {
               <Text style={styles.tutorName}>{tutorName}</Text>
             </View>
           )}
-        </View>
+        </LinearGradient>
 
         {/* Transcript */}
         {transcript.length === 0 && isActive && (
@@ -402,12 +410,13 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.xl,
   },
 
-  // Waveform
-  voiceSection: {
+  sessionHero: {
     width: '100%',
     alignItems: 'center',
     paddingVertical: Spacing.xl,
+    borderRadius: BorderRadius.lg,
     marginBottom: Spacing.lg,
+    overflow: 'hidden',
   },
   waveform: {
     flexDirection: 'row',
@@ -430,9 +439,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.surfaceContainerHighest,
+    backgroundColor: Colors.surfaceContainerLow,
     borderWidth: 2,
-    borderColor: Colors.outlineVariant + '33',
+    borderColor: Colors.onSurface + '22',
     alignItems: 'center',
     justifyContent: 'center',
   },
