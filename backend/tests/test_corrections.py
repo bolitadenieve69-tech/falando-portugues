@@ -44,3 +44,13 @@ class TestParseCorrection:
         correction, text = parse_correction("Sim (claro) — vamos falar de comida.")
         assert correction is None
         assert text == "Sim (claro) — vamos falar de comida."
+
+    def test_nested_parentheses_inside_correction(self):
+        correction, text = parse_correction("(Correção: usa X (não Y).) Resposta.")
+        assert correction == "usa X (não Y)."
+        assert text == "Resposta."
+
+    def test_unclosed_marker_falls_through(self):
+        correction, text = parse_correction("(Correção: sem fecho")
+        assert correction is None
+        assert text == "(Correção: sem fecho"

@@ -2,8 +2,12 @@
 
 import re
 
+# Lazy match, but the closing ')' must be followed by whitespace or end of
+# string — so parentheticals inside the correction (e.g. "(não Y)") don't
+# terminate it early. Known limitation: a correction containing ') ' inside
+# still truncates; acceptable given the prompt's fixed short format.
 _CORRECTION_RE = re.compile(
-    r"^\s*\(\s*corre[cç]{1,2}[ãa]o\s*:\s*(.+?)\s*\)\s*(.*)$",
+    r"^\s*\(\s*corre[cç]{1,2}[ãa]o\s*:\s*(.+?)\s*\)(?=\s|$)\s*(.*)$",
     re.IGNORECASE | re.DOTALL,
 )
 
