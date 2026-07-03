@@ -6,9 +6,9 @@ import type { UserLevel } from '../../src/features/session/types';
 import { Colors, Spacing, Typography } from '../../src/constants/theme';
 
 const VOICES = [
-  { id: 'DMcOknq8n1B6XshFIJKJ', name: 'Patrício', description: 'Masculino, Lisboa' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Joana', description: 'Feminino, Porto' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Tiago', description: 'Masculino, jovem' },
+  { id: 'c0rzOw18hxEhaSybUod2', name: 'Tiago', description: 'Lisboa · Conversacional' },
+  { id: 'nJ5NFqyKb8kn9JBPmo6i', name: 'Joana', description: 'Lisboa · Natural e clara' },
+  { id: 'DMcOknq8n1B6XshFIJKJ', name: 'Patrício', description: 'Porto · Profunda e calma' },
 ];
 
 const LEVELS: UserLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
