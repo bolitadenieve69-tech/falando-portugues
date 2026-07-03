@@ -41,6 +41,12 @@ describe('register', () => {
 })
 
 describe('createSession', () => {
+  const ORIGINAL_APP_TOKEN = process.env.EXPO_PUBLIC_APP_TOKEN
+  afterEach(() => {
+    if (ORIGINAL_APP_TOKEN === undefined) delete process.env.EXPO_PUBLIC_APP_TOKEN
+    else process.env.EXPO_PUBLIC_APP_TOKEN = ORIGINAL_APP_TOKEN
+  })
+
   it('posts to /session with app token and full body, maps snake_case response', async () => {
     process.env.EXPO_PUBLIC_APP_TOKEN = 'app-tok'
     mockFetch.mockResolvedValue({
@@ -77,6 +83,17 @@ describe('createSession', () => {
       createSession({ level: 'A1', topic: 'comida' }, 'tok', { voiceId: 'v', participantName: 'u' })
     ).rejects.toThrow()
   })
+
+  it('omits X-App-Token when app token is empty', async () => {
+    process.env.EXPO_PUBLIC_APP_TOKEN = ''
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ room_name: 'r', token: 't', livekit_url: 'wss://x' }),
+    })
+    await createSession({ level: 'B1', topic: 'livre' }, 'user-tok', { voiceId: 'v', participantName: 'u' })
+    const [, options] = mockFetch.mock.calls[0]
+    expect(options.headers['X-App-Token']).toBeUndefined()
+  })
 })
 
 describe('translate', () => {
@@ -89,9 +106,11 @@ describe('translate', () => {
 })
 
 describe('voicePreview', () => {
-  it('GETs /voice-preview/{id}', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) })
-    await voicePreview('DMcOknq8n1B6XshFIJKJ', 'tok')
+  it('GETs /voice-preview/{id} and returns the audio buffer', async () => {
+    const buf = new ArrayBuffer(8)
+    mockFetch.mockResolvedValue({ ok: true, arrayBuffer: async () => buf })
+    const result = await voicePreview('DMcOknq8n1B6XshFIJKJ', 'tok')
+    expect(result).toBe(buf)
     expect(mockFetch.mock.calls[0][0]).toContain('/voice-preview/DMcOknq8n1B6XshFIJKJ')
   })
 })

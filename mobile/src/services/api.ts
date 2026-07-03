@@ -88,10 +88,14 @@ export async function translate(
 export async function voicePreview(
   voiceId: string,
   token: string
-): Promise<unknown> {
+): Promise<ArrayBuffer> {
   const res = await fetch(`${BASE_URL}/voice-preview/${voiceId}`, {
     method: 'GET',
     headers: authHeaders(token),
   })
-  return handleResponse(res)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`voice-preview failed: ${res.status} ${body}`)
+  }
+  return res.arrayBuffer()
 }
