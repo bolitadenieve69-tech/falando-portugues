@@ -84,13 +84,19 @@ class TranscriptPublisher(IdentityFilter):
                 if full:
                     loguru_logger.info("[transcript] tutor: {}", full)
                     correction, clean = parse_correction(full)
-                    await self._publish(clean or full, correction=correction)
+                    if not clean:
+                        # Correction-only reply: keep the original text and drop
+                        # the structured field so the client never renders the
+                        # same correction twice.
+                        correction = None
+                        clean = full
+                    await self._publish(clean, correction=correction)
                 else:
                     loguru_logger.warning("[transcript] tutor response was empty")
 
     async def _publish(self, text: str, correction: str | None = None) -> None:
         try:
-            message: dict = {"type": "transcript", "speaker": self._speaker, "text": text}
+            message: dict[str, str | None] = {"type": "transcript", "speaker": self._speaker, "text": text}
             if self._speaker == "tutor":
                 message["correction"] = correction
             payload = json.dumps(message).encode()

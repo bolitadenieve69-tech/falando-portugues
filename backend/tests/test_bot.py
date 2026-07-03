@@ -160,6 +160,20 @@ class TestTranscriptPublisherTutor:
         }]
 
     @pytest.mark.asyncio
+    async def test_correction_only_reply_keeps_original_text(self):
+        published: list = []
+        pub = self._publisher(published)
+        await pub.process_frame(LLMFullResponseStartFrame(), FrameDirection.DOWNSTREAM)
+        await pub.process_frame(TextFrame(text="(Correção: diz-se obrigado.)"), FrameDirection.DOWNSTREAM)
+        await pub.process_frame(LLMFullResponseEndFrame(), FrameDirection.DOWNSTREAM)
+        assert published == [{
+            "type": "transcript",
+            "speaker": "tutor",
+            "text": "(Correção: diz-se obrigado.)",
+            "correction": None,
+        }]
+
+    @pytest.mark.asyncio
     async def test_no_correction_publishes_null(self):
         published: list = []
         pub = self._publisher(published)
