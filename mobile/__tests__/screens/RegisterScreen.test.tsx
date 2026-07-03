@@ -1,0 +1,56 @@
+import React from 'react';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { AuthProvider } from '../../src/contexts/AuthContext';
+import RegisterScreen from '../../app/(auth)/register';
+
+jest.mock('../../src/services/storage', () => ({
+  getAuthToken: jest.fn().mockResolvedValue(null),
+  saveAuthToken: jest.fn().mockResolvedValue(undefined),
+  getOrCreateDeviceId: jest.fn().mockResolvedValue('dev-id'),
+}));
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <AuthProvider>{children}</AuthProvider>
+);
+
+describe('RegisterScreen', () => {
+  it('renders username and password inputs', () => {
+    const { getByPlaceholderText } = render(<RegisterScreen />, { wrapper });
+    expect(getByPlaceholderText('Nome de utilizador')).toBeTruthy();
+    expect(getByPlaceholderText('Palavra-passe')).toBeTruthy();
+  });
+
+  it('shows validation error for short username', async () => {
+    const { getByPlaceholderText, getByText } = render(<RegisterScreen />, { wrapper });
+    fireEvent.changeText(getByPlaceholderText('Nome de utilizador'), 'a');
+    fireEvent.changeText(getByPlaceholderText('Palavra-passe'), 'pass1234');
+    fireEvent.press(getByText('Registar'));
+    await waitFor(() => {
+      expect(getByText(/mínimo 2 caracteres/i)).toBeTruthy();
+    });
+  });
+
+  it('shows validation error for short password', async () => {
+    const { getByPlaceholderText, getByText } = render(<RegisterScreen />, { wrapper });
+    fireEvent.changeText(getByPlaceholderText('Nome de utilizador'), 'angel');
+    fireEvent.changeText(getByPlaceholderText('Palavra-passe'), 'ab');
+    fireEvent.press(getByText('Registar'));
+    await waitFor(() => {
+      expect(getByText(/mínimo 4 caracteres/i)).toBeTruthy();
+    });
+  });
+
+  it('calls register on valid submission', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ token: 'tok', username: 'angel' }),
+    });
+    const { getByPlaceholderText, getByText } = render(<RegisterScreen />, { wrapper });
+    fireEvent.changeText(getByPlaceholderText('Nome de utilizador'), 'angel');
+    fireEvent.changeText(getByPlaceholderText('Palavra-passe'), 'pass1234');
+    fireEvent.press(getByText('Registar'));
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+  });
+});
