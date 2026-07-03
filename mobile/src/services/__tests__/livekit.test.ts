@@ -1,45 +1,44 @@
-import { connect, disconnect } from '../livekit'
-import type { LiveKitSessionData, TranscriptEntry } from '../../features/session/types'
+import { parseDataMessage } from '../livekit'
 
-const mockData: LiveKitSessionData = {
-  roomName: 'test-room',
-  token: 'test-token',
-  livekitUrl: 'wss://test.livekit.io',
+function encode(obj: unknown): Uint8Array {
+  return new TextEncoder().encode(JSON.stringify(obj))
 }
 
-beforeEach(() => jest.useFakeTimers())
-afterEach(() => jest.useRealTimers())
-
-describe('connect', () => {
-  it('returns a room with disconnect and onTranscript', () => {
-    const room = connect(mockData)
-    expect(typeof room.disconnect).toBe('function')
-    expect(typeof room.onTranscript).toBe('function')
+describe('parseDataMessage', () => {
+  it('parses a tutor message with correction', () => {
+    const entry = parseDataMessage(
+      encode({ type: 'transcript', speaker: 'tutor', text: 'Boa!', correction: 'diz-se X.' })
+    )
+    expect(entry).toMatchObject({
+      speaker: 'tutor',
+      text: 'Boa!',
+      correction: 'diz-se X.',
+      hasCorrection: true,
+    })
+    expect(entry?.id).toBeTruthy()
+    expect(typeof entry?.timestamp).toBe('number')
   })
 
-  it('fires 3 transcript entries after 1500ms intervals', () => {
-    const entries: TranscriptEntry[] = []
-    const room = connect(mockData)
-    room.onTranscript((e) => entries.push(e))
-
-    jest.advanceTimersByTime(5000)
-
-    expect(entries).toHaveLength(3)
-    expect(entries[0].speaker).toBe('tutor')
-    expect(entries[2].hasCorrection).toBe(true)
+  it('parses a tutor message with null correction', () => {
+    const entry = parseDataMessage(
+      encode({ type: 'transcript', speaker: 'tutor', text: 'Olá!', correction: null })
+    )
+    expect(entry).toMatchObject({ text: 'Olá!', hasCorrection: false })
+    expect(entry?.correction).toBeUndefined()
   })
-})
 
-describe('disconnect', () => {
-  it('cancels pending timers so no entries fire after disconnect', () => {
-    const entries: TranscriptEntry[] = []
-    const room = connect(mockData)
-    room.onTranscript((e) => entries.push(e))
+  it('parses a user message without correction key', () => {
+    const entry = parseDataMessage(encode({ type: 'transcript', speaker: 'user', text: 'Eu fui.' }))
+    expect(entry).toMatchObject({ speaker: 'user', text: 'Eu fui.', hasCorrection: false })
+  })
 
-    jest.advanceTimersByTime(1600)
-    disconnect(room)
-    jest.advanceTimersByTime(5000)
+  it('returns null for non-transcript messages', () => {
+    expect(parseDataMessage(encode({ type: 'ping' }))).toBeNull()
+  })
 
-    expect(entries).toHaveLength(1)
+  it('returns null for malformed payloads', () => {
+    expect(parseDataMessage(new TextEncoder().encode('not json'))).toBeNull()
+    expect(parseDataMessage(encode({ type: 'transcript', speaker: 'alien', text: 'x' }))).toBeNull()
+    expect(parseDataMessage(encode({ type: 'transcript', speaker: 'user' }))).toBeNull()
   })
 })

@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { registerGlobals } from '@livekit/react-native';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { SettingsProvider } from '../src/contexts/SettingsContext';
+
+registerGlobals();
 
 function AuthGate() {
   const { token, isLoading } = useAuth();
