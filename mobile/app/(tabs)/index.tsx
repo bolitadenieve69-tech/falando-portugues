@@ -3,7 +3,6 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useSettings } from '../../src/contexts/SettingsContext';
-import { SessionProvider, useSession } from '../../src/contexts/SessionContext';
 import { LevelChip } from '../../src/components/LevelChip';
 import { TopicCard } from '../../src/components/TopicCard';
 import { PrimaryButton } from '../../src/components/PrimaryButton';
@@ -21,27 +20,15 @@ const TOPICS: Array<{ topic: ConversationTopic; label: string; icon: string }> =
 
 const LEVELS: UserLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
-function HomeContent() {
+export default function HomeScreen() {
   const { username } = useAuth();
   const { settings } = useSettings();
-  const { startSession } = useSession();
   const router = useRouter();
   const [level, setLevel] = useState<UserLevel>(settings.level);
   const [topic, setTopic] = useState<ConversationTopic>(settings.topic);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  async function handleStart() {
-    setError('');
-    setLoading(true);
-    try {
-      await startSession({ level, topic });
-      router.push(`/session/${level}-${topic}-${Date.now()}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao iniciar sessão');
-    } finally {
-      setLoading(false);
-    }
+  function handleStart() {
+    router.push(`/session/${level}-${topic}-${Date.now()}`);
   }
 
   return (
@@ -59,18 +46,8 @@ function HomeContent() {
           <TopicCard key={t.topic} {...t} selected={topic === t.topic} onPress={() => setTopic(t.topic)} />
         ))}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <PrimaryButton label="Iniciar sessão" onPress={handleStart} loading={loading} />
+      <PrimaryButton label="Iniciar sessão" onPress={handleStart} />
     </ScrollView>
-  );
-}
-
-export default function HomeScreen() {
-  const { token } = useAuth();
-  return (
-    <SessionProvider token={token ?? ''}>
-      <HomeContent />
-    </SessionProvider>
   );
 }
 
@@ -90,5 +67,4 @@ const styles = StyleSheet.create({
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  error: { color: Colors.error, fontSize: 14 },
 });

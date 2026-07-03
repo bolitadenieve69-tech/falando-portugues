@@ -10,12 +10,6 @@ jest.mock('../../src/services/storage', () => ({
   saveSettings: jest.fn().mockResolvedValue(undefined),
   saveSession: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../../src/services/api');
-jest.mock('../../src/services/livekit', () => ({
-  connect: jest.fn().mockResolvedValue({ roomName: 'r1', _timerId: null, _callbacks: [] }),
-  onTranscript: jest.fn(),
-  disconnect: jest.fn(),
-}));
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <AuthProvider>

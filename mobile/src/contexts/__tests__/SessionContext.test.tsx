@@ -43,11 +43,32 @@ describe('startSession', () => {
     const { result } = renderHook(() => useSession(), { wrapper })
 
     await act(async () => {
-      await result.current.startSession({ level: 'B1', topic: 'livre' })
+      await result.current.startSession(
+        { level: 'B1', topic: 'livre' },
+        { voiceId: 'DMcOknq8n1B6XshFIJKJ', participantName: 'angel' }
+      )
     })
 
     expect(result.current.status).toBe('active')
     expect(result.current.livekitData).toEqual(mockLivekitData)
+  })
+
+  it('forwards meta to createSession', async () => {
+    mockApi.createSession.mockResolvedValue(mockLivekitData)
+    const { result } = renderHook(() => useSession(), { wrapper })
+
+    await act(async () => {
+      await result.current.startSession(
+        { level: 'B1', topic: 'livre' },
+        { voiceId: 'DMcOknq8n1B6XshFIJKJ', participantName: 'angel' }
+      )
+    })
+
+    expect(api.createSession).toHaveBeenCalledWith(
+      { level: 'B1', topic: 'livre' },
+      'auth-tok',
+      { voiceId: 'DMcOknq8n1B6XshFIJKJ', participantName: 'angel' }
+    )
   })
 
   it('transitions to error on API failure', async () => {
@@ -55,7 +76,10 @@ describe('startSession', () => {
     const { result } = renderHook(() => useSession(), { wrapper })
 
     await act(async () => {
-      await result.current.startSession({ level: 'B1', topic: 'livre' })
+      await result.current.startSession(
+        { level: 'B1', topic: 'livre' },
+        { voiceId: 'DMcOknq8n1B6XshFIJKJ', participantName: 'angel' }
+      )
     })
 
     expect(result.current.status).toBe('error')
@@ -69,7 +93,10 @@ describe('endSession', () => {
     const { result } = renderHook(() => useSession(), { wrapper })
 
     await act(async () => {
-      await result.current.startSession({ level: 'B1', topic: 'livre' })
+      await result.current.startSession(
+        { level: 'B1', topic: 'livre' },
+        { voiceId: 'DMcOknq8n1B6XshFIJKJ', participantName: 'angel' }
+      )
     })
     await act(async () => {
       await result.current.endSession()

@@ -23,12 +23,16 @@ function SessionContent() {
   const router = useRouter();
   const { status, transcript, error, startSession, endSession } = useSession();
   const { settings } = useSettings();
+  const { username } = useAuth();
 
   useEffect(() => {
     const parts = (roomName ?? '').split('-');
     const level = (parts[0] as UserLevel) || settings.level;
     const topic = (parts[1] as ConversationTopic) || settings.topic;
-    startSession({ level, topic });
+    startSession(
+      { level, topic },
+      { voiceId: settings.voiceId, participantName: username ?? 'user' }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

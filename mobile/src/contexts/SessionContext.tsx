@@ -2,6 +2,7 @@ import React, { createContext, useContext, useRef, useState } from 'react'
 import type { SessionStatus, TranscriptEntry, SessionConfig } from '../features/session/types'
 import type { SessionHistoryEntry } from '../types'
 import { createSession as apiCreateSession } from '../services/api'
+import type { SessionMeta } from '../services/api'
 import { connect, disconnect, MockRoom } from '../services/livekit'
 import { saveSession } from '../services/storage'
 
@@ -13,7 +14,7 @@ interface SessionState {
 }
 
 interface SessionContextValue extends SessionState {
-  startSession: (config: SessionConfig) => Promise<void>
+  startSession: (config: SessionConfig, meta: SessionMeta) => Promise<void>
   endSession: () => Promise<void>
   setError: (error: string) => void
   addTranscriptEntry: (entry: TranscriptEntry) => void
@@ -45,13 +46,13 @@ export function SessionProvider({ children, token }: SessionProviderProps) {
     setState((prev) => ({ ...prev, status: 'error', error }))
   }
 
-  async function startSession(config: SessionConfig): Promise<void> {
+  async function startSession(config: SessionConfig, meta: SessionMeta): Promise<void> {
     configRef.current = config
     startTimeRef.current = Date.now()
     setState({ status: 'connecting', transcript: [], livekitData: null, error: null })
 
     try {
-      const livekitData = await apiCreateSession(config, token)
+      const livekitData = await apiCreateSession(config, token, meta)
       const room = connect(livekitData)
       roomRef.current = room
 
