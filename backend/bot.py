@@ -35,6 +35,7 @@ from pipecat.services.elevenlabs.tts import ElevenLabsHttpTTSService
 from pipecat.transports.livekit.transport import LiveKitParams, LiveKitTransport
 
 from prompts.tutor_pt import build_system_prompt
+from utils.corrections import parse_correction
 
 
 class TranscriptPublisher(IdentityFilter):
@@ -82,15 +83,17 @@ class TranscriptPublisher(IdentityFilter):
                 self._buffer = []
                 if full:
                     loguru_logger.info("[transcript] tutor: {}", full)
-                    await self._publish(full)
+                    correction, clean = parse_correction(full)
+                    await self._publish(clean or full, correction=correction)
                 else:
                     loguru_logger.warning("[transcript] tutor response was empty")
 
-    async def _publish(self, text: str) -> None:
+    async def _publish(self, text: str, correction: str | None = None) -> None:
         try:
-            payload = json.dumps(
-                {"type": "transcript", "speaker": self._speaker, "text": text}
-            ).encode()
+            message: dict = {"type": "transcript", "speaker": self._speaker, "text": text}
+            if self._speaker == "tutor":
+                message["correction"] = correction
+            payload = json.dumps(message).encode()
             local = self._room.local_participant
             try:
                 await local.publish_data(payload, reliable=True)

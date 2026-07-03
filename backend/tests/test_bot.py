@@ -111,7 +111,12 @@ class TestTranscriptPublisherTutor:
         await pub.process_frame(TextFrame(text="dia!"), FrameDirection.DOWNSTREAM)
         await pub.process_frame(LLMFullResponseEndFrame(), FrameDirection.DOWNSTREAM)
         assert len(published) == 1
-        assert published[0] == {"type": "transcript", "speaker": "tutor", "text": "Bom dia!"}
+        assert published[0] == {
+            "type": "transcript",
+            "speaker": "tutor",
+            "text": "Bom dia!",
+            "correction": None,
+        }
 
     @pytest.mark.asyncio
     async def test_empty_response_not_published(self):
@@ -136,6 +141,32 @@ class TestTranscriptPublisherTutor:
         assert len(published) == 2
         assert published[0]["text"] == "Olá!"
         assert published[1]["text"] == "Tchau!"
+
+    @pytest.mark.asyncio
+    async def test_correction_is_parsed_into_payload(self):
+        published: list = []
+        pub = self._publisher(published)
+        await pub.process_frame(LLMFullResponseStartFrame(), FrameDirection.DOWNSTREAM)
+        await pub.process_frame(
+            TextFrame(text="(Correção: diz-se fui em vez de fui a.) Boa pergunta!"),
+            FrameDirection.DOWNSTREAM,
+        )
+        await pub.process_frame(LLMFullResponseEndFrame(), FrameDirection.DOWNSTREAM)
+        assert published == [{
+            "type": "transcript",
+            "speaker": "tutor",
+            "text": "Boa pergunta!",
+            "correction": "diz-se fui em vez de fui a.",
+        }]
+
+    @pytest.mark.asyncio
+    async def test_no_correction_publishes_null(self):
+        published: list = []
+        pub = self._publisher(published)
+        await pub.process_frame(LLMFullResponseStartFrame(), FrameDirection.DOWNSTREAM)
+        await pub.process_frame(TextFrame(text="Bom dia!"), FrameDirection.DOWNSTREAM)
+        await pub.process_frame(LLMFullResponseEndFrame(), FrameDirection.DOWNSTREAM)
+        assert published[0]["correction"] is None
 
     @pytest.mark.asyncio
     async def test_publish_failure_is_swallowed(self):
