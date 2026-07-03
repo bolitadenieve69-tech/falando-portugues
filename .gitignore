@@ -59,3 +59,7 @@ falando.db
 # local agent/app settings
 .claude/
 .codex/
+
+# Jest coverage output
+mobile/coverage/
+.superpowers/
