@@ -26,8 +26,8 @@ function HomeContent() {
   const { settings } = useSettings();
   const { startSession } = useSession();
   const router = useRouter();
-  const [level, setLevel] = useState<UserLevel>(settings.defaultLevel);
-  const [topic, setTopic] = useState<ConversationTopic>(settings.defaultTopic);
+  const [level, setLevel] = useState<UserLevel>(settings.level);
+  const [topic, setTopic] = useState<ConversationTopic>(settings.topic);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -50,13 +50,13 @@ function HomeContent() {
       <Text style={styles.sectionTitle}>Nível</Text>
       <View style={styles.chips}>
         {LEVELS.map((l) => (
-          <LevelChip key={l} level={l} selected={level === l} onPress={setLevel} />
+          <LevelChip key={l} level={l} selected={level === l} onPress={() => setLevel(l)} />
         ))}
       </View>
       <Text style={styles.sectionTitle}>Tema</Text>
       <View style={styles.grid}>
         {TOPICS.map((t) => (
-          <TopicCard key={t.topic} {...t} selected={topic === t.topic} onPress={setTopic} />
+          <TopicCard key={t.topic} {...t} selected={topic === t.topic} onPress={() => setTopic(t.topic)} />
         ))}
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -68,7 +68,7 @@ function HomeContent() {
 export default function HomeScreen() {
   const { token } = useAuth();
   return (
-    <SessionProvider token={token}>
+    <SessionProvider token={token ?? ''}>
       <HomeContent />
     </SessionProvider>
   );
@@ -77,8 +77,17 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.xl, gap: Spacing.md, paddingBottom: Spacing.xxl },
-  greeting: { ...Typography.heading2 },
-  sectionTitle: { ...Typography.label, marginTop: Spacing.sm },
+  greeting: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  sectionTitle: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
+  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   error: { color: Colors.error, fontSize: 14 },

@@ -23,14 +23,14 @@ export default function SettingsScreen() {
       {VOICES.map((v) => (
         <TouchableOpacity
           key={v.id}
-          style={[styles.voiceCard, settings.preferredVoiceId === v.id && styles.voiceSelected]}
-          onPress={() => updateSetting('preferredVoiceId', v.id)}
+          style={[styles.voiceCard, settings.voiceId === v.id && styles.voiceSelected]}
+          onPress={() => { void updateSetting('voiceId', v.id); }}
         >
           <View>
             <Text style={styles.voiceName}>{v.name}</Text>
             <Text style={styles.voiceDesc}>{v.description}</Text>
           </View>
-          {settings.preferredVoiceId === v.id && (
+          {settings.voiceId === v.id && (
             <Text style={styles.checkmark}>✓</Text>
           )}
         </TouchableOpacity>
@@ -42,8 +42,8 @@ export default function SettingsScreen() {
           <LevelChip
             key={l}
             level={l}
-            selected={settings.defaultLevel === l}
-            onPress={(level) => updateSetting('defaultLevel', level)}
+            selected={settings.level === l}
+            onPress={() => { void updateSetting('level', l); }}
           />
         ))}
       </View>
@@ -61,7 +61,12 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.xl, gap: Spacing.md },
-  sectionTitle: { ...Typography.label, marginTop: Spacing.md },
+  sectionTitle: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.textSecondary,
+    marginTop: Spacing.md,
+  },
   voiceCard: {
     flexDirection: 'row',
     alignItems: 'center',

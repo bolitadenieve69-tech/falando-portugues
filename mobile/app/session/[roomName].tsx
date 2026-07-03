@@ -26,8 +26,8 @@ function SessionContent() {
 
   useEffect(() => {
     const parts = (roomName ?? '').split('-');
-    const level = (parts[0] as UserLevel) || settings.defaultLevel;
-    const topic = (parts[1] as ConversationTopic) || settings.defaultTopic;
+    const level = (parts[0] as UserLevel) || settings.level;
+    const topic = (parts[1] as ConversationTopic) || settings.topic;
     startSession({ level, topic });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -73,7 +73,7 @@ function SessionContent() {
 export default function SessionScreen() {
   const { token } = useAuth();
   return (
-    <SessionProvider token={token}>
+    <SessionProvider token={token ?? ''}>
       <SessionContent />
     </SessionProvider>
   );
@@ -82,7 +82,12 @@ export default function SessionScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md, paddingTop: Spacing.xl },
-  roomLabel: { ...Typography.label, flex: 1 },
+  roomLabel: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
   pill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: Colors.surface2 },
   pillActive: { backgroundColor: Colors.success + '33' },
   pillError: { backgroundColor: Colors.error + '33' },

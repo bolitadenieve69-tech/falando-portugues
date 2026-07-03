@@ -7,7 +7,7 @@ import SessionScreen from '../../app/session/[roomName]';
 
 jest.mock('../../src/services/storage', () => ({
   getAuthToken: jest.fn().mockResolvedValue({ token: 'tok', username: 'angel' }),
-  getSettings: jest.fn().mockResolvedValue({ defaultLevel: 'B1', defaultTopic: 'livre', preferredVoiceId: 'x' }),
+  getSettings: jest.fn().mockResolvedValue({ level: 'B1', topic: 'livre', voiceId: 'x' }),
   saveSettings: jest.fn().mockResolvedValue(undefined),
   saveSession: jest.fn().mockResolvedValue(undefined),
 }));

@@ -14,13 +14,15 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('LoginScreen', () => {
-  it('renders password input', () => {
+  it('renders username and password inputs', () => {
     const { getByPlaceholderText } = render(<LoginScreen />, { wrapper });
+    expect(getByPlaceholderText('Nome de utilizador')).toBeTruthy();
     expect(getByPlaceholderText('Palavra-passe')).toBeTruthy();
   });
 
   it('shows validation error for short password', async () => {
     const { getByPlaceholderText, getByText } = render(<LoginScreen />, { wrapper });
+    fireEvent.changeText(getByPlaceholderText('Nome de utilizador'), 'angel');
     fireEvent.changeText(getByPlaceholderText('Palavra-passe'), 'ab');
     fireEvent.press(getByText('Entrar'));
     await waitFor(() => {
@@ -34,6 +36,7 @@ describe('LoginScreen', () => {
       json: async () => ({ token: 'tok', username: 'angel' }),
     });
     const { getByPlaceholderText, getByText } = render(<LoginScreen />, { wrapper });
+    fireEvent.changeText(getByPlaceholderText('Nome de utilizador'), 'angel');
     fireEvent.changeText(getByPlaceholderText('Palavra-passe'), 'pass1234');
     fireEvent.press(getByText('Entrar'));
     await waitFor(() => {

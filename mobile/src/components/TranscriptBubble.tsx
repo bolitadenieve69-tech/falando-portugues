@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
   wrapperRight: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   tutorLabel: { color: Colors.accentLight, fontSize: 11, fontWeight: '600', marginBottom: 2, marginLeft: 4 },
   bubble: {
-    borderRadius: Radii.card,
+    borderRadius: Radii.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },

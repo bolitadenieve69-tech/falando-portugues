@@ -19,11 +19,10 @@ describe('HistoryScreen', () => {
       {
         id: '1',
         roomName: 'room-abc',
-        level: 'B1',
-        topic: 'viagens',
-        startedAt: 1714000000,
-        durationSeconds: 180,
+        startedAt: 1714000000000,
+        endedAt: 1714000180000,
         transcript: [],
+        config: { level: 'B1', topic: 'viagens' },
       },
     ]);
     const { getByText } = render(<HistoryScreen />);

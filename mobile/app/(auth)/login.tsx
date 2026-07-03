@@ -6,6 +6,7 @@ import { PrimaryButton } from '../../src/components/PrimaryButton';
 import { Colors, Radii, Spacing, Typography } from '../../src/constants/theme';
 
 export default function LoginScreen() {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,10 +15,11 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     setError('');
+    if (username.trim().length < 2) { setError('Nome de utilizador: mínimo 2 caracteres.'); return; }
     if (password.length < 4) { setError('Palavra-passe: mínimo 4 caracteres.'); return; }
     setLoading(true);
     try {
-      await login(password);
+      await login(username.trim(), password);
       router.replace('/(tabs)');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao entrar');
@@ -32,6 +34,14 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Text style={styles.title}>Bem-vindo de volta</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Nome de utilizador"
+        placeholderTextColor={Colors.textSecondary}
+        value={username}
+        onChangeText={setUsername}
+        autoCapitalize="none"
+      />
       <TextInput
         style={styles.input}
         placeholder="Palavra-passe"
@@ -51,12 +61,17 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.xl, justifyContent: 'center', gap: Spacing.md },
-  title: { ...Typography.heading2, marginBottom: Spacing.md },
+  title: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.md,
+  },
   input: {
     backgroundColor: Colors.surface2,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: Radii.input,
+    borderRadius: Radii.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     color: Colors.textPrimary,

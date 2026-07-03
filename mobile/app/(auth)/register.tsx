@@ -61,12 +61,17 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.xl, justifyContent: 'center', gap: Spacing.md },
-  title: { ...Typography.heading2, marginBottom: Spacing.md },
+  title: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.md,
+  },
   input: {
     backgroundColor: Colors.surface2,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: Radii.input,
+    borderRadius: Radii.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
     color: Colors.textPrimary,
