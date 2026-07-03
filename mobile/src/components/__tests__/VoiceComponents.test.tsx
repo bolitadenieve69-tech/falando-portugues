@@ -39,4 +39,30 @@ describe('TranscriptBubble', () => {
     expect(getByText('Bem-vindo!')).toBeTruthy();
     expect(getByText('Tutor')).toBeTruthy();
   });
+
+  it('renders correction line when entry has a correction', () => {
+    const { getByText } = render(
+      <TranscriptBubble
+        entry={{
+          id: '3',
+          speaker: 'tutor',
+          text: 'Boa pergunta!',
+          timestamp: 0,
+          hasCorrection: true,
+          correction: 'diz-se fui em vez de fui a.',
+        }}
+      />
+    );
+    expect(getByText(/diz-se fui em vez de fui a\./)).toBeTruthy();
+    expect(getByText('Boa pergunta!')).toBeTruthy();
+  });
+
+  it('renders no correction line without correction', () => {
+    const { queryByText } = render(
+      <TranscriptBubble
+        entry={{ id: '4', speaker: 'tutor', text: 'Olá!', timestamp: 0, hasCorrection: false }}
+      />
+    );
+    expect(queryByText(/✏️/)).toBeNull();
+  });
 });

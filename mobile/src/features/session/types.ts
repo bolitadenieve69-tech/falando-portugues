@@ -16,6 +16,7 @@ export interface TranscriptEntry {
   text: string;
   timestamp: number;
   hasCorrection: boolean;
+  correction?: string;
 }
 
 export interface SessionConfig {

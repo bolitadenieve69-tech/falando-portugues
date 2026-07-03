@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { TranscriptEntry } from '../features/session/types';
-import { Colors, Radii, Spacing } from '../constants/theme';
+import { Colors, Radii, Spacing, Typography } from '../constants/theme';
 
 interface TranscriptBubbleProps {
   entry: TranscriptEntry;
@@ -13,7 +13,10 @@ export function TranscriptBubble({ entry }: TranscriptBubbleProps) {
     <View style={[styles.wrapper, isUser ? styles.wrapperRight : styles.wrapperLeft]}>
       {!isUser && <Text style={styles.tutorLabel}>Tutor</Text>}
       <View style={[styles.bubble, isUser ? styles.userBubble : styles.tutorBubble]}>
-        <Text style={[styles.text, entry.hasCorrection && styles.correction]}>{entry.text}</Text>
+        {entry.correction ? (
+          <Text style={styles.correctionLine}>✏️ {entry.correction}</Text>
+        ) : null}
+        <Text style={styles.text}>{entry.text}</Text>
       </View>
     </View>
   );
@@ -32,5 +35,10 @@ const styles = StyleSheet.create({
   userBubble: { backgroundColor: Colors.surface2 },
   tutorBubble: { backgroundColor: Colors.surface },
   text: { color: Colors.textPrimary, fontSize: 15, fontWeight: '500', lineHeight: 22 },
-  correction: { color: Colors.success },
+  correctionLine: {
+    color: Colors.success,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    marginBottom: Spacing.xs,
+  },
 });
