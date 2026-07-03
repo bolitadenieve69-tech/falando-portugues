@@ -3,9 +3,15 @@ import type { SessionConfig, LiveKitSessionData } from '../features/session/type
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'http://localhost:8000'
 
 function authHeaders(token: string): Record<string, string> {
+  // Read via a computed key so bundlers that statically inline
+  // `process.env.EXPO_PUBLIC_*` member expressions at build time don't bake
+  // in a stale value — this must be read fresh at call time.
+  const appTokenKey = 'EXPO_PUBLIC_APP_TOKEN'
+  const appToken = process.env[appTokenKey] ?? ''
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
+    ...(appToken ? { 'X-App-Token': appToken } : {}),
   }
 }
 
@@ -43,26 +49,38 @@ export async function register(
   return handleResponse(res)
 }
 
+export interface SessionMeta {
+  voiceId: string
+  participantName: string
+}
+
 export async function createSession(
   config: SessionConfig,
-  token: string
+  token: string,
+  meta: SessionMeta
 ): Promise<LiveKitSessionData> {
-  const res = await fetch(`${BASE_URL}/sessions`, {
+  const res = await fetch(`${BASE_URL}/session`, {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify(config),
+    body: JSON.stringify({
+      level: config.level,
+      topic: config.topic,
+      voice_id: meta.voiceId,
+      participant_name: meta.participantName,
+    }),
   })
-  return handleResponse(res)
+  const data = await handleResponse<{ room_name: string; token: string; livekit_url: string }>(res)
+  return { roomName: data.room_name, token: data.token, livekitUrl: data.livekit_url }
 }
 
 export async function translate(
-  text: string,
+  word: string,
   token: string
 ): Promise<{ translation: string }> {
   const res = await fetch(`${BASE_URL}/translate`, {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ word }),
   })
   return handleResponse(res)
 }
@@ -70,8 +88,8 @@ export async function translate(
 export async function voicePreview(
   voiceId: string,
   token: string
-): Promise<{ audioUrl: string }> {
-  const res = await fetch(`${BASE_URL}/voices/${voiceId}/preview`, {
+): Promise<unknown> {
+  const res = await fetch(`${BASE_URL}/voice-preview/${voiceId}`, {
     method: 'GET',
     headers: authHeaders(token),
   })
