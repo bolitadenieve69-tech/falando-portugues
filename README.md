@@ -47,3 +47,13 @@ This MVP intentionally keeps platform costs low while validating the product.
 - Caddy is already in place on the VPS, so swapping to a real domain should mainly require updating `Caddyfile`, DNS, and `EXPO_PUBLIC_BACKEND_URL`.
 - Mobile distribution remains provisional until developer credentials are purchased/configured, especially Google Play Developer credentials for Android release builds.
 - Expo/dev builds are the intended testing path until those developer accounts and signing credentials are ready.
+
+## Private Beta
+
+The current product phase is a controlled private beta with known testers, not commercialization.
+
+Use these docs to run the beta:
+
+- `docs/beta/private-beta-guide.md` — tester profile, testing flow, and feedback questions.
+- `docs/beta/qa-checklist.md` — technical checklist before inviting each tester batch.
+- `docs/beta/multilanguage-roadmap.md` — plan for French, Italian, and English without forking the app too early.
