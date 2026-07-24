@@ -54,3 +54,18 @@ class TestParseCorrection:
         correction, text = parse_correction("(Correção: sem fecho")
         assert correction is None
         assert text == "(Correção: sem fecho"
+
+    def test_french_correction_marker(self):
+        correction, text = parse_correction("(Correction: on dit X au lieu de Y.) Réponse.")
+        assert correction == "on dit X au lieu de Y."
+        assert text == "Réponse."
+
+    def test_italian_correction_marker(self):
+        correction, text = parse_correction("(Correzione: si dice X invece di Y.) Risposta.")
+        assert correction == "si dice X invece di Y."
+        assert text == "Risposta."
+
+    def test_english_correction_marker(self):
+        correction, text = parse_correction("(Correction: say X instead of Y.) Reply here.")
+        assert correction == "say X instead of Y."
+        assert text == "Reply here."

@@ -18,6 +18,8 @@ interface CreateSessionParams {
   topic: string;
   voiceId?: string;
   participantName?: string;
+  /** BCP-47 language tag (e.g. "pt-PT"). Omitted → backend defaults to Portuguese. */
+  language?: string;
 }
 
 export async function createSession(
@@ -31,6 +33,7 @@ export async function createSession(
       topic: params.topic,
       voice_id: params.voiceId,
       participant_name: params.participantName ?? 'user',
+      ...(params.language ? { language: params.language } : {}),
     }),
   });
 
@@ -111,6 +114,29 @@ export async function fetchSessionsRemote(): Promise<SessionRecord[] | null> {
     if (!response.ok) return null;
     const data = (await response.json()) as { sessions: RemoteSessionRecord[] };
     return data.sessions.map(fromRemote);
+  } catch {
+    return null;
+  }
+}
+
+export interface LanguageInfo {
+  code: string;
+  name: string;
+  ready: boolean;
+  levels: string[];
+  topics: { key: string; label: string }[];
+  voices: { id: string; name: string }[];
+}
+
+/** Fetch the languages the backend supports. Returns null on failure. */
+export async function fetchLanguages(): Promise<LanguageInfo[] | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/languages`, {
+      headers: await authHeaders(),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { languages: LanguageInfo[] };
+    return data.languages;
   } catch {
     return null;
   }

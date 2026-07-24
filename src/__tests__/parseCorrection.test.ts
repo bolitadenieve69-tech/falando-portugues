@@ -40,4 +40,22 @@ describe('parseCorrection', () => {
     expect(result.correction).toBeDefined();
     expect(result.text).toBe('');
   });
+
+  it('parses a French correction marker', () => {
+    const result = parseCorrection("(Correction: on dit 'X' au lieu de 'Y'). Réponse.");
+    expect(result.correction).toBe("on dit 'X' au lieu de 'Y'");
+    expect(result.text).toBe('Réponse.');
+  });
+
+  it('parses an Italian correction marker', () => {
+    const result = parseCorrection("(Correzione: si dice 'X' invece di 'Y'). Risposta.");
+    expect(result.correction).toBe("si dice 'X' invece di 'Y'");
+    expect(result.text).toBe('Risposta.');
+  });
+
+  it('parses an English correction marker', () => {
+    const result = parseCorrection("(Correction: say 'X' instead of 'Y'). Reply.");
+    expect(result.correction).toBe("say 'X' instead of 'Y'");
+    expect(result.text).toBe('Reply.');
+  });
 });

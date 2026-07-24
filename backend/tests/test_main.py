@@ -131,6 +131,71 @@ class TestCreateSession:
         # Blank name is sanitized to "user" — request succeeds
         assert resp.status_code == 200
 
+    @patch("main.create_participant_token", return_value="tok-abc")
+    @patch("main.asyncio.create_task")
+    def test_defaults_to_portuguese_without_language(self, mock_task, mock_token):
+        # Backward compat: existing app sends no `language` field.
+        client = self._make_client()
+        body = {k: v for k, v in VALID_SESSION_BODY.items()}
+        resp = client.post("/session", json=body)
+        assert resp.status_code == 200
+
+    @patch("main.create_participant_token", return_value="tok-abc")
+    @patch("main.asyncio.create_task")
+    def test_voice_id_defaults_when_omitted(self, mock_task, mock_token):
+        client = self._make_client()
+        body = {"level": "B1", "topic": "livre", "language": "pt-PT"}
+        resp = client.post("/session", json=body)
+        assert resp.status_code == 200
+
+    @patch("main.create_participant_token", return_value="tok-abc")
+    @patch("main.asyncio.create_task")
+    def test_unsupported_language_returns_422(self, mock_task, mock_token):
+        client = self._make_client()
+        body = {**VALID_SESSION_BODY, "language": "de-DE", "voice_id": None}
+        resp = client.post("/session", json=body)
+        assert resp.status_code == 422
+
+    @patch("main.create_participant_token", return_value="tok-abc")
+    @patch("main.asyncio.create_task")
+    def test_not_ready_language_returns_422(self, mock_task, mock_token):
+        # French has no configured voices yet → rejected.
+        client = self._make_client()
+        body = {"level": "B1", "topic": "livre", "language": "fr-FR"}
+        resp = client.post("/session", json=body)
+        assert resp.status_code == 422
+
+    @patch("main.create_participant_token", return_value="tok-abc")
+    @patch("main.asyncio.create_task")
+    def test_voice_from_wrong_language_returns_422(self, mock_task, mock_token):
+        # A pt voice id under fr-FR is invalid (and fr-FR is not ready anyway).
+        client = self._make_client()
+        body = {**VALID_SESSION_BODY, "language": "fr-FR"}
+        resp = client.post("/session", json=body)
+        assert resp.status_code == 422
+
+
+class TestLanguages:
+    def test_lists_all_languages(self):
+        client = _client_with_user()
+        resp = client.get("/languages")
+        assert resp.status_code == 200
+        langs = {l["code"]: l for l in resp.json()["languages"]}
+        assert set(langs) == {"pt-PT", "fr-FR", "it-IT", "en-GB"}
+
+    def test_portuguese_ready_with_voices(self):
+        client = _client_with_user()
+        pt = next(l for l in client.get("/languages").json()["languages"] if l["code"] == "pt-PT")
+        assert pt["ready"] is True
+        assert len(pt["voices"]) == 3
+        assert {"key": "livre", "label": pt["topics"][-1]["label"]}  # topics present
+
+    def test_french_not_ready_no_voices(self):
+        client = _client_with_user()
+        fr = next(l for l in client.get("/languages").json()["languages"] if l["code"] == "fr-FR")
+        assert fr["ready"] is False
+        assert fr["voices"] == []
+
 
 # ── /translate ────────────────────────────────────────────────────────────────
 

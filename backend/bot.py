@@ -33,7 +33,7 @@ from pipecat.services.deepgram.stt import DeepgramSTTService, LiveOptions
 from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.transports.livekit.transport import LiveKitParams, LiveKitTransport
 
-from prompts.tutor_pt import build_system_prompt
+from languages import DEFAULT_LANGUAGE, get_language
 from utils.corrections import parse_correction
 
 # Hard cap on session length so an abandoned session cannot keep consuming
@@ -149,13 +149,14 @@ async def run_bot(
     level: str = "B1",
     topic: str = "livre",
     voice_id: str = "DMcOknq8n1B6XshFIJKJ",
+    language: str = DEFAULT_LANGUAGE,
     max_retries: int = 3,
 ) -> None:
     load_dotenv(override=True)
 
     for attempt in range(1, max_retries + 1):
         try:
-            await _run_pipeline(room_url, token, room_name, level, topic, voice_id)
+            await _run_pipeline(room_url, token, room_name, level, topic, voice_id, language)
             return
         except Exception as exc:
             if attempt < max_retries:
@@ -177,7 +178,10 @@ async def _run_pipeline(
     level: str,
     topic: str,
     voice_id: str,
+    language: str = DEFAULT_LANGUAGE,
 ) -> None:
+    profile = get_language(language) or get_language(DEFAULT_LANGUAGE)
+
     transport = LiveKitTransport(
         url=room_url,
         token=token,
@@ -191,7 +195,7 @@ async def _run_pipeline(
     stt = DeepgramSTTService(
         api_key=os.environ["DEEPGRAM_API_KEY"],
         live_options=LiveOptions(
-            language="pt",
+            language=profile.stt_language,
             model="nova-3-general",
             endpointing=1000,
             smart_format=True,
@@ -200,8 +204,8 @@ async def _run_pipeline(
         ),
     )
 
-    system_prompt = build_system_prompt(level=level, topic=topic)
-    logger.info("[bot] prompt[:120]: %s", system_prompt[:120])
+    system_prompt = profile.build_system_prompt(level=level, topic=topic)
+    logger.info("[bot] lang=%s prompt[:120]: %s", profile.code, system_prompt[:120])
 
     llm = _SerialAnthropicLLM(
         api_key=os.environ["ANTHROPIC_API_KEY"],

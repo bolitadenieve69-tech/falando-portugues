@@ -76,11 +76,48 @@ Each language should be a configuration, not a fork.
 
 1. Portuguese private beta.
 2. Portuguese bug fixing and latency tuning.
-3. Extract tutor profile abstraction.
+3. Extract tutor profile abstraction. ✅ Done — see below.
 4. Add French as the first non-Portuguese pilot.
 5. Add Italian.
 6. Add English.
 7. Decide commercial packaging.
+
+## Current Implementation (tutor profile abstraction)
+
+The abstraction is in place. Each language is a `LanguageProfile` living in
+`backend/languages/`, and the engine (`bot.py`, `main.py`) is language-agnostic.
+
+- `languages/profile.py` — the `LanguageProfile` / `Voice` dataclasses.
+- `languages/pt_pt.py`, `fr_fr.py`, `it_it.py`, `en_gb.py` — one profile per language.
+- `languages/__init__.py` — the registry (`get_language`, `list_languages`).
+- `GET /languages` — the app fetches the catalog (codes, labels, topics, voices,
+  and a `ready` flag) from here; nothing is hard-coded in the app.
+
+Topic keys (`viagens`, `trabalho`, …) and CEFR level keys (`A1`–`C2`) are shared
+across every language on purpose, so stored session records and the app stay
+language-independent. Only the human-facing labels and the prompt differ.
+
+Portuguese is the only `ready` language. French, Italian, and English profiles
+exist with complete prompts, level instructions, topics, and STT codes, but their
+`voices` tuples are empty — `/session` rejects a language until it has at least one
+voice. This proves the architecture generalizes (roadmap decision gate #5) without
+shipping a half-configured language.
+
+### How to enable a new language
+
+1. Open the language's profile in `backend/languages/` (create one by copying
+   `pt_pt.py` if it does not exist).
+2. Pick voices in the ElevenLabs voice library for that language/dialect and add
+   them to the `_VOICES` tuple (id, display name, preview sentence). Set
+   `default_voice_id`.
+3. If the language is new, register it in `languages/__init__.py` (`_PROFILES`).
+4. Verify the correction marker word is covered by the parsers in
+   `backend/utils/corrections.py` and `src/features/session/utils/parseCorrection.ts`.
+5. Test STT + TTS quality with a real speaker before inviting testers.
+
+The mobile client already accepts an optional `language` in `createSession` and can
+list languages via `fetchLanguages()`; add the in-app language selector only after
+the Portuguese beta feedback is positive (see step 4 of the technical steps).
 
 ## Risks
 

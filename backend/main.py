@@ -102,14 +102,22 @@ async def require_user(
 
 # ── Input models ──────────────────────────────────────────────────────────────
 
-_DEFAULT_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "DMcOknq8n1B6XshFIJKJ")
+from languages import (  # noqa: E402
+    DEFAULT_LANGUAGE,
+    LANGUAGES,
+    get_language,
+    list_languages,
+)
+from pydantic import model_validator  # noqa: E402
 
 _VALID_LEVELS = {"A1", "A2", "B1", "B2", "C1", "C2"}
-_VALID_TOPICS = {"viagens", "trabalho", "familia", "comida", "cultura", "livre"}
-_KNOWN_VOICE_IDS = {
-    "c0rzOw18hxEhaSybUod2",
-    "nJ5NFqyKb8kn9JBPmo6i",
-    "DMcOknq8n1B6XshFIJKJ",
+# Topic keys are shared across every language, so this set is language-independent.
+_VALID_TOPICS = get_language(DEFAULT_LANGUAGE).valid_topics()
+# Flat index of every configured voice across languages (used by /voice-preview).
+_ALL_VOICES = {
+    voice.id: voice
+    for profile in LANGUAGES.values()
+    for voice in profile.voices
 }
 
 
@@ -117,7 +125,9 @@ class SessionRequest(BaseModel):
     level: str = "B1"
     topic: str = "livre"
     participant_name: str = Field(default="user", max_length=32)
-    voice_id: str = _DEFAULT_VOICE_ID
+    language: str = DEFAULT_LANGUAGE
+    # None → the selected language's default voice.
+    voice_id: str | None = None
 
     @field_validator("level")
     @classmethod
@@ -133,23 +143,39 @@ class SessionRequest(BaseModel):
             raise ValueError(f"topic must be one of {sorted(_VALID_TOPICS)}")
         return v
 
-    @field_validator("voice_id")
-    @classmethod
-    def validate_voice_id(cls, v: str) -> str:
-        if v not in _KNOWN_VOICE_IDS:
-            raise ValueError("unknown voice_id")
-        return v
-
     @field_validator("participant_name")
     @classmethod
     def sanitize_name(cls, v: str) -> str:
         return v.strip() or "user"
+
+    @model_validator(mode="after")
+    def resolve_and_validate_voice(self) -> "SessionRequest":
+        profile = get_language(self.language)
+        if profile is None:
+            raise ValueError(f"unsupported language: {self.language}")
+        if not profile.ready:
+            raise ValueError(f"language {self.language} is not available yet (no voices configured)")
+        if self.voice_id is None:
+            object.__setattr__(self, "voice_id", profile.default_voice_id)
+        elif self.voice_id not in profile.valid_voice_ids():
+            raise ValueError(f"voice_id not available for language {self.language}")
+        return self
 
 
 class SessionResponse(BaseModel):
     room_name: str
     token: str
     livekit_url: str
+
+
+# Maps ISO codes used by the app to language names for the translation prompt.
+_LANG_NAMES = {
+    "pt": "Portuguese",
+    "fr": "French",
+    "it": "Italian",
+    "en": "English",
+    "es": "Spanish",
+}
 
 
 class TranslateRequest(BaseModel):
@@ -235,6 +261,7 @@ async def create_session(
             level=req.level,
             topic=req.topic,
             voice_id=req.voice_id,
+            language=req.language,
         )
     )
 
@@ -252,11 +279,15 @@ async def _spawn_bot(
     level: str,
     topic: str,
     voice_id: str = "DMcOknq8n1B6XshFIJKJ",
+    language: str = DEFAULT_LANGUAGE,
 ) -> None:
     _log = logging.getLogger("bot.spawn")
     try:
         from bot import run_bot
-        _log.info("Starting bot room=%s level=%s topic=%s", room_name, level, topic)
+        _log.info(
+            "Starting bot room=%s lang=%s level=%s topic=%s",
+            room_name, language, level, topic,
+        )
         await run_bot(
             room_url=room_url,
             token=token,
@@ -264,6 +295,7 @@ async def _spawn_bot(
             level=level,
             topic=topic,
             voice_id=voice_id,
+            language=language,
         )
         _log.info("Bot finished room=%s", room_name)
     except Exception as exc:
@@ -289,6 +321,8 @@ async def translate_word(
     if cached is not None:
         return TranslateResponse(word=req.word, translation=cached)
 
+    from_name = _LANG_NAMES.get(req.from_lang, req.from_lang)
+    to_name = _LANG_NAMES.get(req.to_lang, req.to_lang)
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -297,7 +331,7 @@ async def translate_word(
             {
                 "role": "user",
                 "content": (
-                    f"Translate the Portuguese word '{req.word}' to Spanish. "
+                    f"Translate the {from_name} word '{req.word}' to {to_name}. "
                     "Reply with ONLY the translation, nothing else. "
                     "If it has multiple meanings, give the most common one."
                 ),
@@ -342,12 +376,48 @@ async def list_sessions_endpoint(
     return SessionListResponse(sessions=[SessionRecord(**row) for row in rows])
 
 
-_VOICE_PREVIEW_TEXT = {
-    "c0rzOw18hxEhaSybUod2": "Olá! Sou o Tiago, o teu tutor de português europeu.",
-    "nJ5NFqyKb8kn9JBPmo6i": "Olá! Sou a Joana, a tua tutora de português europeu.",
-    "DMcOknq8n1B6XshFIJKJ": "Olá! Sou o Patrício, o teu tutor de português europeu.",
-}
-_DEFAULT_PREVIEW_TEXT = "Olá! Sou o teu tutor de português europeu."
+# ── Languages ─────────────────────────────────────────────────────────────────
+
+
+class VoiceInfo(BaseModel):
+    id: str
+    name: str
+
+
+class LanguageInfo(BaseModel):
+    code: str
+    name: str
+    ready: bool
+    levels: list[str]
+    topics: list[dict[str, str]]  # [{"key": ..., "label": ...}]
+    voices: list[VoiceInfo]
+
+
+class LanguageListResponse(BaseModel):
+    languages: list[LanguageInfo]
+
+
+def _language_info(profile) -> LanguageInfo:
+    return LanguageInfo(
+        code=profile.code,
+        name=profile.name,
+        ready=profile.ready,
+        levels=sorted(_VALID_LEVELS),
+        topics=[{"key": k, "label": v} for k, v in profile.topic_labels.items()],
+        voices=[VoiceInfo(id=v.id, name=v.name) for v in profile.voices],
+    )
+
+
+@app.get(
+    "/languages",
+    response_model=LanguageListResponse,
+    dependencies=[Depends(require_app_token)],
+)
+@limiter.limit("30/minute")
+async def list_languages_endpoint(request: Request) -> LanguageListResponse:
+    return LanguageListResponse(
+        languages=[_language_info(p) for p in list_languages()]
+    )
 
 
 @app.get(
@@ -360,10 +430,11 @@ async def voice_preview(
     voice_id: str,
     user: dict = Depends(require_user),
 ) -> Response:
-    if voice_id not in _KNOWN_VOICE_IDS:
+    voice = _ALL_VOICES.get(voice_id)
+    if voice is None:
         raise HTTPException(status_code=400, detail="Unknown voice_id")
 
-    text = _VOICE_PREVIEW_TEXT.get(voice_id, _DEFAULT_PREVIEW_TEXT)
+    text = voice.preview_text
     api_key = os.environ.get("ELEVENLABS_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="ELEVENLABS_API_KEY not configured")
