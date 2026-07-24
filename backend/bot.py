@@ -5,7 +5,6 @@ import json
 import logging
 import os
 
-import aiohttp
 from dotenv import load_dotenv
 from loguru import logger as loguru_logger
 
@@ -31,7 +30,7 @@ from pipecat.processors.filters.identity_filter import IdentityFilter
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.deepgram.stt import DeepgramSTTService, LiveOptions
-from pipecat.services.elevenlabs.tts import ElevenLabsHttpTTSService
+from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.transports.livekit.transport import LiveKitParams, LiveKitTransport
 
 from prompts.tutor_pt import build_system_prompt
@@ -40,6 +39,10 @@ from utils.corrections import parse_correction
 # Hard cap on session length so an abandoned session cannot keep consuming
 # Deepgram/Anthropic/ElevenLabs indefinitely.
 MAX_SESSION_SECONDS = int(os.environ.get("MAX_SESSION_MINUTES", "30")) * 60
+
+# eleven_flash_v2_5 is ~2-3x faster/cheaper; override to A/B test latency
+# vs. voice quality for PT-PT before committing to a default.
+TTS_MODEL = os.environ.get("ELEVENLABS_TTS_MODEL", "eleven_multilingual_v2")
 
 
 class TranscriptPublisher(IdentityFilter):
@@ -217,87 +220,88 @@ async def _run_pipeline(
     user_pub = TranscriptPublisher("user")
     tutor_pub = TranscriptPublisher("tutor")
 
-    async with aiohttp.ClientSession() as session:
-        tts = ElevenLabsHttpTTSService(
-            api_key=os.environ["ELEVENLABS_API_KEY"],
-            voice_id=voice_id,
-            aiohttp_session=session,
-            model="eleven_multilingual_v2",
-        )
+    # WebSocket TTS streams audio chunks as they are generated, so playback
+    # starts before the full reply is synthesized (vs. waiting for the whole
+    # HTTP response with the old ElevenLabsHttpTTSService).
+    tts = ElevenLabsTTSService(
+        api_key=os.environ["ELEVENLABS_API_KEY"],
+        voice_id=voice_id,
+        model=TTS_MODEL,
+    )
 
-        pipeline = Pipeline([
-            transport.input(),
-            stt,
-            user_pub,
-            context_aggregator.user(),
-            llm,
-            tutor_pub,
-            tts,
-            transport.output(),
-            context_aggregator.assistant(),
-        ])
+    pipeline = Pipeline([
+        transport.input(),
+        stt,
+        user_pub,
+        context_aggregator.user(),
+        llm,
+        tutor_pub,
+        tts,
+        transport.output(),
+        context_aggregator.assistant(),
+    ])
 
-        # enable_rtvi=False removes the RTVIProcessor wrapper that waits for an
-        # RTVI handshake that never arrives (our app uses LiveKit directly).
-        task = PipelineTask(pipeline, enable_rtvi=False)
+    # enable_rtvi=False removes the RTVIProcessor wrapper that waits for an
+    # RTVI handshake that never arrives (our app uses LiveKit directly).
+    task = PipelineTask(pipeline, enable_rtvi=False)
 
-        @task.event_handler("on_pipeline_started")
-        async def on_pipeline_started(task, frame):
-            loguru_logger.info("[bot] on_pipeline_started fired — pipeline is running")
+    @task.event_handler("on_pipeline_started")
+    async def on_pipeline_started(task, frame):
+        loguru_logger.info("[bot] on_pipeline_started fired — pipeline is running")
 
-        @transport.event_handler("on_first_participant_joined")
-        async def on_first_participant_joined(transport, participant_id: str):
-            loguru_logger.info("[bot] first participant joined: {}", participant_id)
-            # Room is now connected — safe to access local_participant.
-            try:
-                room = transport._client.room
-                user_pub.set_room(room)
-                tutor_pub.set_room(room)
-                loguru_logger.info("[bot] room reference set on publishers")
-            except Exception as exc:
-                loguru_logger.warning("[bot] could not set room on publishers: {}", exc)
-            # Trigger the opening greeting by injecting an initial user turn.
-            loguru_logger.info("[bot] queuing initial LLMRunFrame for opening greeting")
-            await task.queue_frames([LLMRunFrame()])
-
-        @transport.event_handler("on_audio_track_subscribed")
-        async def on_audio_track_subscribed(transport, participant_id: str):
-            loguru_logger.info("[bot] audio track subscribed: {}", participant_id)
-            try:
-                room = transport._client.room
-                user_pub.set_room(room)
-                tutor_pub.set_room(room)
-            except Exception as exc:
-                loguru_logger.warning("[bot] could not set room on audio_track_subscribed: {}", exc)
-
-        @transport.event_handler("on_data_received")
-        async def on_data_received(transport, data: bytes, participant_id: str):
-            try:
-                msg = json.loads(data.decode())
-                if msg.get("type") == "user_text":
-                    text = msg.get("text", "").strip()
-                    if text:
-                        loguru_logger.info("[bot] data channel user_text: {}", text)
-                        await task.queue_frames([
-                            LLMMessagesAppendFrame(
-                                messages=[{"role": "user", "content": text}],
-                                run_llm=True,
-                            )
-                        ])
-            except Exception as exc:
-                loguru_logger.warning("[bot] data message error: {}", exc)
-
-        async def _enforce_max_duration() -> None:
-            await asyncio.sleep(MAX_SESSION_SECONDS)
-            loguru_logger.info(
-                "[bot] {} reached max duration ({}s) — cancelling pipeline",
-                room_name, MAX_SESSION_SECONDS,
-            )
-            await task.cancel()
-
-        watchdog = asyncio.create_task(_enforce_max_duration())
+    @transport.event_handler("on_first_participant_joined")
+    async def on_first_participant_joined(transport, participant_id: str):
+        loguru_logger.info("[bot] first participant joined: {}", participant_id)
+        # Room is now connected — safe to access local_participant.
         try:
-            runner = PipelineRunner()
-            await runner.run(task)
-        finally:
-            watchdog.cancel()
+            room = transport._client.room
+            user_pub.set_room(room)
+            tutor_pub.set_room(room)
+            loguru_logger.info("[bot] room reference set on publishers")
+        except Exception as exc:
+            loguru_logger.warning("[bot] could not set room on publishers: {}", exc)
+        # Trigger the opening greeting by injecting an initial user turn.
+        loguru_logger.info("[bot] queuing initial LLMRunFrame for opening greeting")
+        await task.queue_frames([LLMRunFrame()])
+
+    @transport.event_handler("on_audio_track_subscribed")
+    async def on_audio_track_subscribed(transport, participant_id: str):
+        loguru_logger.info("[bot] audio track subscribed: {}", participant_id)
+        try:
+            room = transport._client.room
+            user_pub.set_room(room)
+            tutor_pub.set_room(room)
+        except Exception as exc:
+            loguru_logger.warning("[bot] could not set room on audio_track_subscribed: {}", exc)
+
+    @transport.event_handler("on_data_received")
+    async def on_data_received(transport, data: bytes, participant_id: str):
+        try:
+            msg = json.loads(data.decode())
+            if msg.get("type") == "user_text":
+                text = msg.get("text", "").strip()
+                if text:
+                    loguru_logger.info("[bot] data channel user_text: {}", text)
+                    await task.queue_frames([
+                        LLMMessagesAppendFrame(
+                            messages=[{"role": "user", "content": text}],
+                            run_llm=True,
+                        )
+                    ])
+        except Exception as exc:
+            loguru_logger.warning("[bot] data message error: {}", exc)
+
+    async def _enforce_max_duration() -> None:
+        await asyncio.sleep(MAX_SESSION_SECONDS)
+        loguru_logger.info(
+            "[bot] {} reached max duration ({}s) — cancelling pipeline",
+            room_name, MAX_SESSION_SECONDS,
+        )
+        await task.cancel()
+
+    watchdog = asyncio.create_task(_enforce_max_duration())
+    try:
+        runner = PipelineRunner()
+        await runner.run(task)
+    finally:
+        watchdog.cancel()

@@ -97,7 +97,7 @@ class DeepgramSTTService:
 class LiveOptions:
     pass
 
-class ElevenLabsHttpTTSService:
+class ElevenLabsTTSService:
     def __init__(self, *args, **kwargs):
         pass
 
@@ -164,7 +164,7 @@ _PIPECAT_STUBS = {
     ),
     "pipecat.services.elevenlabs": _make_module("pipecat.services.elevenlabs"),
     "pipecat.services.elevenlabs.tts": _make_module(
-        "pipecat.services.elevenlabs.tts", ElevenLabsHttpTTSService=ElevenLabsHttpTTSService
+        "pipecat.services.elevenlabs.tts", ElevenLabsTTSService=ElevenLabsTTSService
     ),
     "pipecat.transports": _make_module("pipecat.transports"),
     "pipecat.transports.livekit": _make_module("pipecat.transports.livekit"),
