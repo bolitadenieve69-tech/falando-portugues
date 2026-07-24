@@ -31,6 +31,28 @@ export async function saveSession(record: SessionRecord): Promise<void> {
   }
 }
 
+/**
+ * Merge server-side records into local storage (dedupe by id, newest first)
+ * and return the merged list. Lets a reinstalled app recover its history.
+ * Pure with respect to the network — callers fetch remote records and pass them in.
+ */
+export async function mergeRemoteSessions(
+  remote: SessionRecord[],
+): Promise<SessionRecord[]> {
+  const local = await loadSessions();
+  const byId = new Map<string, SessionRecord>();
+  for (const s of [...local, ...remote]) byId.set(s.id, s);
+  const merged = Array.from(byId.values())
+    .sort((a, b) => b.startedAt - a.startedAt)
+    .slice(0, MAX_SESSIONS);
+  try {
+    await FileSystem.writeAsStringAsync(historyUri(), JSON.stringify(merged));
+  } catch {
+    // Storage not available — return the in-memory merge anyway.
+  }
+  return merged;
+}
+
 export async function loadSessions(): Promise<SessionRecord[]> {
   try {
     const uri = historyUri();

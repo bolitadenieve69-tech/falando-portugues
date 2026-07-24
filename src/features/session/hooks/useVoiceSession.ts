@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
-import { createSession } from '../../../services/api';
+import { createSession, saveSessionRemote } from '../../../services/api';
 import { saveSession } from '../../../services/history';
 import { loadPreferences } from '../../../services/preferences';
 import type {
@@ -192,7 +192,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     if (config && sessionStartRef.current > 0 && current.length > 0) {
       const corrections = current.filter((e) => e.correction != null).length;
       const excerpt = current.find((e) => e.speaker === 'tutor')?.text ?? '';
-      await saveSession({
+      const record = {
         id: `${sessionStartRef.current}-${endedAt}`,
         topic: config.topic,
         level: config.level,
@@ -202,7 +202,11 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         messageCount: current.length,
         correctionCount: corrections,
         excerpt: excerpt.slice(0, 120),
-      });
+      };
+      // Local storage is the source of truth; the server upload is best-effort
+      // and must never block ending the session or throw.
+      await saveSession(record);
+      void saveSessionRemote(record);
     }
 
     setStatus('ended');

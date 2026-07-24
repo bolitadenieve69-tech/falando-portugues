@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import type { LiveKitSessionData } from '../features/session/types';
+import type { SessionRecord } from './history';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
 const APP_TOKEN = process.env.EXPO_PUBLIC_APP_TOKEN ?? '';
@@ -44,6 +45,75 @@ export async function createSession(
     token: data.token,
     livekitUrl: data.livekit_url,
   };
+}
+
+/** Snake_case shape the backend /sessions API expects and returns. */
+interface RemoteSessionRecord {
+  id: string;
+  topic: string;
+  level: string;
+  started_at: number;
+  ended_at: number;
+  duration_seconds: number;
+  message_count: number;
+  correction_count: number;
+  excerpt: string;
+}
+
+function toRemote(r: SessionRecord): RemoteSessionRecord {
+  return {
+    id: r.id,
+    topic: r.topic,
+    level: r.level,
+    started_at: r.startedAt,
+    ended_at: r.endedAt,
+    duration_seconds: r.durationSeconds,
+    message_count: r.messageCount,
+    correction_count: r.correctionCount,
+    excerpt: r.excerpt,
+  };
+}
+
+function fromRemote(r: RemoteSessionRecord): SessionRecord {
+  return {
+    id: r.id,
+    topic: r.topic as SessionRecord['topic'],
+    level: r.level as SessionRecord['level'],
+    startedAt: r.started_at,
+    endedAt: r.ended_at,
+    durationSeconds: r.duration_seconds,
+    messageCount: r.message_count,
+    correctionCount: r.correction_count,
+    excerpt: r.excerpt,
+  };
+}
+
+/** Best-effort upload of a completed session. Never throws — local storage is the source of truth. */
+export async function saveSessionRemote(record: SessionRecord): Promise<boolean> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/sessions`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(toRemote(record)),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Fetch server-side session history. Returns null on failure so callers can fall back to local. */
+export async function fetchSessionsRemote(): Promise<SessionRecord[] | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/sessions`, {
+      headers: await authHeaders(),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { sessions: RemoteSessionRecord[] };
+    return data.sessions.map(fromRemote);
+  } catch {
+    return null;
+  }
 }
 
 export async function checkHealth(): Promise<boolean> {

@@ -171,6 +171,36 @@ class TranslateResponse(BaseModel):
     translation: str
 
 
+class SessionRecord(BaseModel):
+    id: str = Field(min_length=1, max_length=128)
+    topic: str
+    level: str
+    started_at: int
+    ended_at: int
+    duration_seconds: int = Field(ge=0)
+    message_count: int = Field(ge=0)
+    correction_count: int = Field(ge=0)
+    excerpt: str = Field(default="", max_length=200)
+
+    @field_validator("level")
+    @classmethod
+    def validate_level(cls, v: str) -> str:
+        if v not in _VALID_LEVELS:
+            raise ValueError(f"level must be one of {sorted(_VALID_LEVELS)}")
+        return v
+
+    @field_validator("topic")
+    @classmethod
+    def validate_topic(cls, v: str) -> str:
+        if v not in _VALID_TOPICS:
+            raise ValueError(f"topic must be one of {sorted(_VALID_TOPICS)}")
+        return v
+
+
+class SessionListResponse(BaseModel):
+    sessions: list[SessionRecord]
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 from utils.livekit_token import create_participant_token
@@ -278,6 +308,38 @@ async def translate_word(
     if translation:
         await cache_translation(word_key, req.from_lang, req.to_lang, translation)
     return TranslateResponse(word=req.word, translation=translation)
+
+
+@app.post(
+    "/sessions",
+    dependencies=[Depends(require_app_token)],
+)
+@limiter.limit("30/minute")
+async def save_session_endpoint(
+    request: Request,
+    record: SessionRecord,
+    user: dict = Depends(require_user),
+) -> dict:
+    from database import save_session
+
+    await save_session(user["id"], record.model_dump())
+    return {"status": "ok"}
+
+
+@app.get(
+    "/sessions",
+    response_model=SessionListResponse,
+    dependencies=[Depends(require_app_token)],
+)
+@limiter.limit("30/minute")
+async def list_sessions_endpoint(
+    request: Request,
+    user: dict = Depends(require_user),
+) -> SessionListResponse:
+    from database import get_sessions
+
+    rows = await get_sessions(user["id"])
+    return SessionListResponse(sessions=[SessionRecord(**row) for row in rows])
 
 
 _VOICE_PREVIEW_TEXT = {

@@ -205,6 +205,68 @@ class TestTranslateWord:
         assert resp.status_code == 401
 
 
+# ── /sessions ─────────────────────────────────────────────────────────────────
+
+_VALID_SESSION_RECORD = {
+    "id": "1000-1300",
+    "topic": "viagens",
+    "level": "B1",
+    "started_at": 1000,
+    "ended_at": 1300,
+    "duration_seconds": 300,
+    "message_count": 10,
+    "correction_count": 2,
+    "excerpt": "Olá!",
+}
+
+
+class TestSessionHistory:
+    def _make_client(self) -> TestClient:
+        return _client_with_user()
+
+    @patch("database.save_session", new_callable=AsyncMock)
+    def test_save_session_returns_ok(self, mock_save):
+        client = self._make_client()
+        resp = client.post("/sessions", json=_VALID_SESSION_RECORD)
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}
+        mock_save.assert_awaited_once()
+        # Saved under the authenticated user's id, not a client-supplied one.
+        assert mock_save.await_args[0][0] == VALID_USER["id"]
+
+    @patch("database.save_session", new_callable=AsyncMock)
+    def test_save_session_invalid_level_returns_422(self, mock_save):
+        client = self._make_client()
+        body = {**_VALID_SESSION_RECORD, "level": "Z9"}
+        resp = client.post("/sessions", json=body)
+        assert resp.status_code == 422
+        mock_save.assert_not_awaited()
+
+    @patch("database.save_session", new_callable=AsyncMock)
+    def test_save_session_negative_count_returns_422(self, mock_save):
+        client = self._make_client()
+        body = {**_VALID_SESSION_RECORD, "message_count": -1}
+        resp = client.post("/sessions", json=body)
+        assert resp.status_code == 422
+
+    @patch("database.get_sessions", new_callable=AsyncMock, return_value=[_VALID_SESSION_RECORD])
+    def test_list_sessions_returns_records(self, mock_get):
+        client = self._make_client()
+        resp = client.get("/sessions")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["sessions"]) == 1
+        assert body["sessions"][0]["id"] == "1000-1300"
+        mock_get.assert_awaited_once_with(VALID_USER["id"])
+
+    def test_save_session_missing_auth_returns_401(self):
+        main.app.dependency_overrides.pop(main.require_user, None)
+        client = TestClient(main.app, raise_server_exceptions=False)
+        with patch("database.get_user_by_token", new=AsyncMock(return_value=None)):
+            resp = client.post("/sessions", json=_VALID_SESSION_RECORD)
+        assert resp.status_code == 401
+
+
 # ── /voice-preview ────────────────────────────────────────────────────────────
 
 _VALID_VOICE = "DMcOknq8n1B6XshFIJKJ"

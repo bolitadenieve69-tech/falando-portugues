@@ -43,6 +43,25 @@ async def init_db() -> None:
                 PRIMARY KEY (word, from_lang, to_lang)
             )
         """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id               TEXT    PRIMARY KEY,
+                user_id          INTEGER NOT NULL,
+                topic            TEXT    NOT NULL,
+                level            TEXT    NOT NULL,
+                started_at       INTEGER NOT NULL,
+                ended_at         INTEGER NOT NULL,
+                duration_seconds INTEGER NOT NULL,
+                message_count    INTEGER NOT NULL,
+                correction_count INTEGER NOT NULL,
+                excerpt          TEXT    NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        """)
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sessions_user"
+            " ON sessions (user_id, started_at DESC)"
+        )
         await _migrate_token_expiry(db)
         await db.commit()
 
@@ -135,3 +154,48 @@ async def cache_translation(
             (word, from_lang, to_lang, translation, int(time.time())),
         )
         await db.commit()
+
+
+# ── Session history ─────────────────────────────────────────────────────────
+
+_SESSION_COLUMNS = (
+    "id", "topic", "level", "started_at", "ended_at",
+    "duration_seconds", "message_count", "correction_count", "excerpt",
+)
+
+
+async def save_session(user_id: int, record: dict) -> None:
+    """Persist a completed session. Idempotent on session id (upsert)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO sessions"
+            " (id, user_id, topic, level, started_at, ended_at,"
+            "  duration_seconds, message_count, correction_count, excerpt)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                record["id"],
+                user_id,
+                record["topic"],
+                record["level"],
+                record["started_at"],
+                record["ended_at"],
+                record["duration_seconds"],
+                record["message_count"],
+                record["correction_count"],
+                record["excerpt"],
+            ),
+        )
+        await db.commit()
+
+
+async def get_sessions(user_id: int, limit: int = 50) -> list[dict]:
+    """Return the user's sessions, newest first."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            f"SELECT {', '.join(_SESSION_COLUMNS)} FROM sessions"
+            " WHERE user_id = ? ORDER BY started_at DESC LIMIT ?",
+            (user_id, limit),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

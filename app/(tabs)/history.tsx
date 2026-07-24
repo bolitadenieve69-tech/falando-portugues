@@ -11,7 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
-import { loadSessions, computeStats } from '../../src/services/history';
+import { loadSessions, mergeRemoteSessions, computeStats } from '../../src/services/history';
+import { fetchSessionsRemote } from '../../src/services/api';
 import type { SessionRecord, TopicStat } from '../../src/services/history';
 
 const WARM_GREEN = '#046A38';
@@ -56,10 +57,21 @@ export default function HistoryScreen() {
   const [stats, setStats] = useState({ totalSessions: 0, accuracy: 0, streakDays: 0, byTopic: [] as TopicStat[] });
 
   useEffect(() => {
-    loadSessions().then((data) => {
+    let cancelled = false;
+    const apply = (data: SessionRecord[]) => {
+      if (cancelled) return;
       setSessions(data);
       setStats(computeStats(data));
+    };
+    // Show local history immediately, then hydrate from the server so a
+    // reinstalled device recovers its past sessions.
+    loadSessions().then(apply);
+    fetchSessionsRemote().then((remote) => {
+      if (remote) mergeRemoteSessions(remote).then(apply);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const recent = sessions.filter((s) => {

@@ -171,6 +171,71 @@ async def test_translation_cache_replaces_existing():
     assert await get_cached_translation("fixe", "pt", "es") == "genial"
 
 
+def _sample_session(session_id: str = "s1", started_at: int = 1000) -> dict:
+    return {
+        "id": session_id,
+        "topic": "viagens",
+        "level": "B1",
+        "started_at": started_at,
+        "ended_at": started_at + 300,
+        "duration_seconds": 300,
+        "message_count": 12,
+        "correction_count": 3,
+        "excerpt": "Olá, tudo bem?",
+    }
+
+
+@pytest.mark.asyncio
+async def test_save_and_get_session():
+    from database import init_db, register_device, get_user_by_device, save_session, get_sessions
+    await init_db()
+    await register_device("dev-sess-1", "Rita", "pw")
+    user = await get_user_by_device("dev-sess-1")
+    await save_session(user["id"], _sample_session())
+    sessions = await get_sessions(user["id"])
+    assert len(sessions) == 1
+    assert sessions[0]["id"] == "s1"
+    assert sessions[0]["topic"] == "viagens"
+    assert sessions[0]["correction_count"] == 3
+
+
+@pytest.mark.asyncio
+async def test_get_sessions_orders_newest_first():
+    from database import init_db, register_device, get_user_by_device, save_session, get_sessions
+    await init_db()
+    await register_device("dev-sess-2", "Tó", "pw")
+    user = await get_user_by_device("dev-sess-2")
+    await save_session(user["id"], _sample_session("old", started_at=1000))
+    await save_session(user["id"], _sample_session("new", started_at=5000))
+    sessions = await get_sessions(user["id"])
+    assert [s["id"] for s in sessions] == ["new", "old"]
+
+
+@pytest.mark.asyncio
+async def test_save_session_is_idempotent():
+    from database import init_db, register_device, get_user_by_device, save_session, get_sessions
+    await init_db()
+    await register_device("dev-sess-3", "Zé", "pw")
+    user = await get_user_by_device("dev-sess-3")
+    await save_session(user["id"], _sample_session("dup"))
+    await save_session(user["id"], _sample_session("dup"))  # same id
+    sessions = await get_sessions(user["id"])
+    assert len(sessions) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_sessions_isolates_users():
+    from database import init_db, register_device, get_user_by_device, save_session, get_sessions
+    await init_db()
+    await register_device("dev-sess-a", "A", "pw")
+    await register_device("dev-sess-b", "B", "pw")
+    user_a = await get_user_by_device("dev-sess-a")
+    user_b = await get_user_by_device("dev-sess-b")
+    await save_session(user_a["id"], _sample_session("a1"))
+    assert len(await get_sessions(user_b["id"])) == 0
+    assert len(await get_sessions(user_a["id"])) == 1
+
+
 @pytest.mark.asyncio
 async def test_rotate_token_returns_new_token():
     from database import init_db, register_device, rotate_token, get_user_by_token

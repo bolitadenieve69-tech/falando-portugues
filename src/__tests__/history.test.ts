@@ -3,6 +3,7 @@ import {
   saveSession,
   loadSessions,
   clearHistory,
+  mergeRemoteSessions,
 } from '../services/history';
 import type { SessionRecord } from '../services/history';
 
@@ -169,6 +170,40 @@ describe('saveSession', () => {
     const saved = JSON.parse(mockFs[HISTORY_URI]) as SessionRecord[];
     expect(saved).toHaveLength(50);
     expect(saved[0].id).toBe('overflow');
+  });
+});
+
+describe('mergeRemoteSessions', () => {
+  it('recovers remote sessions when local is empty', async () => {
+    const remote = [makeSession({ id: 'r1', startedAt: 1000 })];
+    const merged = await mergeRemoteSessions(remote);
+    expect(merged.map((s) => s.id)).toEqual(['r1']);
+    // Persisted locally too.
+    expect(JSON.parse(mockFs[HISTORY_URI])[0].id).toBe('r1');
+  });
+
+  it('dedupes by id, preferring one copy', async () => {
+    mockFs[HISTORY_URI] = JSON.stringify([makeSession({ id: 'dup', startedAt: 2000 })]);
+    const merged = await mergeRemoteSessions([makeSession({ id: 'dup', startedAt: 2000 })]);
+    expect(merged).toHaveLength(1);
+  });
+
+  it('merges and sorts newest first', async () => {
+    mockFs[HISTORY_URI] = JSON.stringify([makeSession({ id: 'local', startedAt: 1000 })]);
+    const merged = await mergeRemoteSessions([makeSession({ id: 'remote', startedAt: 9000 })]);
+    expect(merged.map((s) => s.id)).toEqual(['remote', 'local']);
+  });
+
+  it('caps merged result at 50', async () => {
+    const local = Array.from({ length: 40 }, (_, i) =>
+      makeSession({ id: `l${i}`, startedAt: i }),
+    );
+    mockFs[HISTORY_URI] = JSON.stringify(local);
+    const remote = Array.from({ length: 40 }, (_, i) =>
+      makeSession({ id: `r${i}`, startedAt: 1000 + i }),
+    );
+    const merged = await mergeRemoteSessions(remote);
+    expect(merged).toHaveLength(50);
   });
 });
 
