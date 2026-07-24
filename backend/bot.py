@@ -37,6 +37,10 @@ from pipecat.transports.livekit.transport import LiveKitParams, LiveKitTransport
 from prompts.tutor_pt import build_system_prompt
 from utils.corrections import parse_correction
 
+# Hard cap on session length so an abandoned session cannot keep consuming
+# Deepgram/Anthropic/ElevenLabs indefinitely.
+MAX_SESSION_SECONDS = int(os.environ.get("MAX_SESSION_MINUTES", "30")) * 60
+
 
 class TranscriptPublisher(IdentityFilter):
     """Taps into the frame stream and publishes transcripts to the LiveKit data channel.
@@ -283,5 +287,17 @@ async def _run_pipeline(
             except Exception as exc:
                 loguru_logger.warning("[bot] data message error: {}", exc)
 
-        runner = PipelineRunner()
-        await runner.run(task)
+        async def _enforce_max_duration() -> None:
+            await asyncio.sleep(MAX_SESSION_SECONDS)
+            loguru_logger.info(
+                "[bot] {} reached max duration ({}s) — cancelling pipeline",
+                room_name, MAX_SESSION_SECONDS,
+            )
+            await task.cancel()
+
+        watchdog = asyncio.create_task(_enforce_max_duration())
+        try:
+            runner = PipelineRunner()
+            await runner.run(task)
+        finally:
+            watchdog.cancel()

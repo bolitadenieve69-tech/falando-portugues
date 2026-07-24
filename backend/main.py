@@ -252,9 +252,15 @@ async def translate_word(
     user: dict = Depends(require_user),
 ) -> TranslateResponse:
     import anthropic
+    from database import cache_translation, get_cached_translation
 
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    message = client.messages.create(
+    word_key = req.word.lower()
+    cached = await get_cached_translation(word_key, req.from_lang, req.to_lang)
+    if cached is not None:
+        return TranslateResponse(word=req.word, translation=cached)
+
+    client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=64,
         messages=[
@@ -269,6 +275,8 @@ async def translate_word(
         ],
     )
     translation = message.content[0].text.strip()
+    if translation:
+        await cache_translation(word_key, req.from_lang, req.to_lang, translation)
     return TranslateResponse(word=req.word, translation=translation)
 
 

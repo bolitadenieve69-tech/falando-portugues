@@ -142,11 +142,13 @@ class TestTranslateWord:
         msg = MagicMock()
         msg.content = [MagicMock(text=translation)]
         client = MagicMock()
-        client.messages.create.return_value = msg
+        client.messages.create = AsyncMock(return_value=msg)
         return client
 
-    @patch("anthropic.Anthropic")
-    def test_returns_translation(self, mock_anthropic_cls):
+    @patch("database.cache_translation", new_callable=AsyncMock)
+    @patch("database.get_cached_translation", new_callable=AsyncMock, return_value=None)
+    @patch("anthropic.AsyncAnthropic")
+    def test_returns_translation(self, mock_anthropic_cls, mock_get_cache, mock_set_cache):
         mock_anthropic_cls.return_value = self._mock_anthropic_response("viajar")
         client = self._make_client()
         resp = client.post("/translate", json={"word": "viajar", "from_lang": "pt", "to_lang": "es"})
@@ -155,13 +157,35 @@ class TestTranslateWord:
         assert body["word"] == "viajar"
         assert body["translation"] == "viajar"
 
-    @patch("anthropic.Anthropic")
-    def test_strips_whitespace_from_translation(self, mock_anthropic_cls):
+    @patch("database.cache_translation", new_callable=AsyncMock)
+    @patch("database.get_cached_translation", new_callable=AsyncMock, return_value=None)
+    @patch("anthropic.AsyncAnthropic")
+    def test_strips_whitespace_from_translation(self, mock_anthropic_cls, mock_get_cache, mock_set_cache):
         mock_anthropic_cls.return_value = self._mock_anthropic_response("  casa  ")
         client = self._make_client()
         resp = client.post("/translate", json={"word": "casa"})
         assert resp.status_code == 200
         assert resp.json()["translation"] == "casa"
+
+    @patch("database.cache_translation", new_callable=AsyncMock)
+    @patch("database.get_cached_translation", new_callable=AsyncMock, return_value=None)
+    @patch("anthropic.AsyncAnthropic")
+    def test_caches_new_translation(self, mock_anthropic_cls, mock_get_cache, mock_set_cache):
+        mock_anthropic_cls.return_value = self._mock_anthropic_response("hogar")
+        client = self._make_client()
+        resp = client.post("/translate", json={"word": "Casa"})
+        assert resp.status_code == 200
+        # Cache key is lowercased so "Casa" and "casa" share one entry.
+        mock_set_cache.assert_awaited_once_with("casa", "pt", "es", "hogar")
+
+    @patch("database.get_cached_translation", new_callable=AsyncMock, return_value="hogar")
+    @patch("anthropic.AsyncAnthropic")
+    def test_cached_translation_skips_llm(self, mock_anthropic_cls, mock_get_cache):
+        client = self._make_client()
+        resp = client.post("/translate", json={"word": "casa"})
+        assert resp.status_code == 200
+        assert resp.json()["translation"] == "hogar"
+        mock_anthropic_cls.assert_not_called()
 
     def test_empty_word_returns_422(self):
         client = self._make_client()
