@@ -79,23 +79,37 @@ class IdentityFilter:
         pass
 
 class AnthropicLLMService:
+    class InputParams:
+        def __init__(self, *args, **kwargs):
+            pass
+
     def __init__(self, *args, **kwargs):
         pass
+
     async def process_frame(self, frame, direction):
         pass
 
 class LLMContext:
-    pass
+    def __init__(self, *args, **kwargs):
+        pass
 
 class LLMContextAggregatorPair:
-    pass
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def user(self):
+        return MagicMock()
+
+    def assistant(self):
+        return MagicMock()
 
 class DeepgramSTTService:
     def __init__(self, *args, **kwargs):
         pass
 
 class LiveOptions:
-    pass
+    def __init__(self, *args, **kwargs):
+        pass
 
 class ElevenLabsTTSService:
     def __init__(self, *args, **kwargs):

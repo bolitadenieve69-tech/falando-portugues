@@ -100,13 +100,11 @@ export default function SessionScreen() {
     };
   }, []);
 
-  // Auto-navigate back on error
-  useEffect(() => {
-    if (status === 'error') {
-      const t = setTimeout(() => router.back(), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [status]);
+  async function handleRetry() {
+    cleaningUpRef.current = false;
+    const config: SessionConfig = { level: level as any, topic: topic as any };
+    await startSession(config);
+  }
 
   async function handleEndCall() {
     await endSession();
@@ -137,6 +135,7 @@ export default function SessionScreen() {
 
   const isActive = status === 'active';
   const isConnecting = status === 'connecting';
+  const isError = status === 'error';
   const waveformActive = isActive && !isMuted;
 
   return (
@@ -152,12 +151,12 @@ export default function SessionScreen() {
             {isConnecting ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <View style={styles.statusDot} />
+              <View style={[styles.statusDot, isError && styles.statusDotError]} />
             )}
             {/* Long-press the title to open the debug panel */}
             <TouchableWithoutFeedback onLongPress={() => setDebugVisible(true)} delayLongPress={800}>
               <Text style={styles.headerTitle}>
-                {isConnecting ? 'A ligar...' : 'A conversar...'}
+                {isConnecting ? 'A ligar...' : isError ? 'Erro' : 'A conversar...'}
               </Text>
             </TouchableWithoutFeedback>
           </View>
@@ -176,7 +175,17 @@ export default function SessionScreen() {
       {error && (
         <View style={styles.errorBanner}>
           <MaterialCommunityIcons name="alert-circle" size={16} color={Colors.error} />
-          <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.errorContent}>
+            <Text style={styles.errorText}>{error}</Text>
+            <View style={styles.errorActions}>
+              <TouchableOpacity style={styles.errorButton} onPress={handleRetry} activeOpacity={0.8}>
+                <Text style={styles.errorButtonText}>Tentar novamente</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.errorButtonSecondary} onPress={() => router.back()} activeOpacity={0.8}>
+                <Text style={styles.errorButtonTextSecondary}>Voltar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       )}
 
@@ -354,6 +363,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: Colors.primary,
   },
+  statusDotError: {
+    backgroundColor: Colors.error,
+  },
   headerTitle: {
     fontFamily: Typography.headlineBold,
     fontSize: 18,
@@ -384,17 +396,46 @@ const styles = StyleSheet.create({
   },
   errorBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
     backgroundColor: Colors.errorContainer,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
   },
+  errorContent: {
+    flex: 1,
+    gap: Spacing.sm,
+  },
   errorText: {
     fontFamily: Typography.label,
     fontSize: 13,
     color: Colors.onErrorContainer,
-    flex: 1,
+  },
+  errorActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  errorButton: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.error,
+  },
+  errorButtonText: {
+    fontFamily: Typography.label,
+    fontSize: 12,
+    color: '#fff',
+  },
+  errorButtonSecondary: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.surfaceContainerHighest,
+  },
+  errorButtonTextSecondary: {
+    fontFamily: Typography.label,
+    fontSize: 12,
+    color: Colors.onErrorContainer,
   },
   scroll: { flex: 1 },
   scrollContent: {

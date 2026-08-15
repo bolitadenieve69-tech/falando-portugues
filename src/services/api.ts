@@ -128,7 +128,21 @@ export interface LanguageInfo {
   voices: { id: string; name: string }[];
 }
 
-/** Fetch the languages the backend supports. Returns null on failure. */
+export type TutorStatus = 'starting' | 'ready' | 'failed' | 'ended';
+
+export async function fetchSessionStatus(roomName: string): Promise<TutorStatus> {
+  const response = await fetch(`${BACKEND_URL}/session/${encodeURIComponent(roomName)}/status`, {
+    headers: await authHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to fetch session status: ${error}`);
+  }
+
+  const data = (await response.json()) as { status: TutorStatus };
+  return data.status;
+}
 export async function fetchLanguages(): Promise<LanguageInfo[] | null> {
   try {
     const response = await fetch(`${BACKEND_URL}/languages`, {

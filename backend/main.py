@@ -1,14 +1,17 @@
 """FastAPI server — entry point for the Falando Portugues backend."""
 
+from dataclasses import dataclass, field
+from typing import Callable
 import asyncio
 import logging
 import os
+import time
 import uuid
 from contextlib import asynccontextmanager
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -56,6 +59,26 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database ready")
     yield
+    # Graceful shutdown: cancel any running bot tasks and clean up state.
+    logger.info("Shutting down, cancelling bot tasks")
+    async with _room_states_lock:
+        tasks = [
+            state.task
+            for state in _room_states.values()
+            if state.task is not None and not state.task.done()
+        ]
+    cancelled = 0
+    for task in tasks:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            cancelled += 1
+        except Exception:
+            pass
+    async with _room_states_lock:
+        _room_states.clear()
+    logger.info("Shutdown complete, cancelled %d bot task(s)", cancelled)
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -227,6 +250,47 @@ class SessionListResponse(BaseModel):
     sessions: list[SessionRecord]
 
 
+# ── Room state tracking ─────────────────────────────────────────────────────────
+
+@dataclass
+class RoomState:
+    status: str = "starting"  # starting | ready | failed | ended
+    user_id: int | str = 0
+    task: asyncio.Task | None = None
+    created_at: float = field(default_factory=time.monotonic)
+    error: str | None = None
+
+
+_room_states: dict[str, RoomState] = {}
+_room_states_lock = asyncio.Lock()
+
+
+async def _set_room_status(room_name: str, status: str, error: str | None = None) -> None:
+    async with _room_states_lock:
+        state = _room_states.get(room_name)
+        if state is not None:
+            state.status = status
+            if error is not None:
+                state.error = error
+
+
+async def _get_room_status(room_name: str) -> RoomState | None:
+    async with _room_states_lock:
+        return _room_states.get(room_name)
+
+
+async def _cleanup_finished_tasks() -> None:
+    """Remove rooms whose tasks have finished (ready, failed, ended) to prevent leaks."""
+    async with _room_states_lock:
+        done = [
+            room_name
+            for room_name, state in _room_states.items()
+            if state.task is None or state.task.done()
+        ]
+        for room_name in done:
+            del _room_states[room_name]
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 from utils.livekit_token import create_participant_token
@@ -253,7 +317,15 @@ async def create_session(
 
     livekit_url = os.environ["LIVEKIT_URL"]
 
-    asyncio.create_task(
+    await _cleanup_finished_tasks()
+
+    async with _room_states_lock:
+        _room_states[room_name] = RoomState(status="starting", user_id=user["id"])
+
+    async def _on_ready() -> None:
+        await _set_room_status(room_name, "ready")
+
+    task = asyncio.create_task(
         _spawn_bot(
             room_url=livekit_url,
             token=bot_token,
@@ -262,14 +334,42 @@ async def create_session(
             topic=req.topic,
             voice_id=req.voice_id,
             language=req.language,
+            on_ready=_on_ready,
         )
     )
+
+    async with _room_states_lock:
+        state = _room_states.get(room_name)
+        if state is not None:
+            state.task = task
 
     return SessionResponse(
         room_name=room_name,
         token=user_token,
         livekit_url=livekit_url,
     )
+
+
+class SessionStatusResponse(BaseModel):
+    status: str
+
+
+@app.get(
+    "/session/{room_name}/status",
+    response_model=SessionStatusResponse,
+    dependencies=[Depends(require_app_token)],
+)
+@limiter.limit("60/minute")
+async def session_status(
+    request: Request,
+    room_name: str = Path(..., min_length=1),
+    user: dict = Depends(require_user),
+) -> SessionStatusResponse:
+    state = await _get_room_status(room_name)
+    if state is None or state.user_id != user["id"]:
+        # Return 404 instead of 403 so we do not reveal that the room exists.
+        raise HTTPException(status_code=404, detail="Session not found")
+    return SessionStatusResponse(status=state.status)
 
 
 async def _spawn_bot(
@@ -280,6 +380,7 @@ async def _spawn_bot(
     topic: str,
     voice_id: str = "DMcOknq8n1B6XshFIJKJ",
     language: str = DEFAULT_LANGUAGE,
+    on_ready: Callable[[], None] | None = None,
 ) -> None:
     _log = logging.getLogger("bot.spawn")
     try:
@@ -296,10 +397,19 @@ async def _spawn_bot(
             topic=topic,
             voice_id=voice_id,
             language=language,
+            on_ready=on_ready,
         )
+        await _set_room_status(room_name, "ended")
         _log.info("Bot finished room=%s", room_name)
     except Exception as exc:
-        _log.exception("Bot crashed room=%s: %s", room_name, exc)
+        # Log only the exception type to avoid leaking tokens, keys, or PII.
+        await _set_room_status(room_name, "failed", error=type(exc).__name__)
+        _log.error(
+            "Bot failed room=%s error_type=%s",
+            room_name,
+            type(exc).__name__,
+            exc_info=False,
+        )
 
 
 @app.post(
@@ -356,7 +466,10 @@ async def save_session_endpoint(
 ) -> dict:
     from database import save_session
 
-    await save_session(user["id"], record.model_dump())
+    success = await save_session(user["id"], record.model_dump())
+    if not success:
+        # Conflict: another user already owns this session id. Do not reveal owner.
+        raise HTTPException(status_code=409, detail="Session id conflict")
     return {"status": "ok"}
 
 

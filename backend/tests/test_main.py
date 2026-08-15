@@ -4,6 +4,7 @@ Uses httpx.AsyncClient + ASGITransport to test endpoints without network I/O.
 All external calls (database, Anthropic, ElevenLabs, LiveKit) are patched.
 """
 
+import asyncio
 import os
 import pytest
 import pytest_asyncio
@@ -27,6 +28,14 @@ import httpx
 from fastapi.testclient import TestClient
 
 import main  # noqa: E402 — must come after env setup
+
+
+def _discard_coroutine_task(coro):
+    try:
+        coro.close()
+    except Exception:
+        pass
+    return None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -58,6 +67,21 @@ class TestHealth:
         assert resp.json() == {"status": "ok"}
 
 
+class TestAppTokenRequirement:
+    def test_missing_app_token_returns_401(self):
+        with patch.object(main, "_APP_TOKEN", "secret-token"):
+            client = _client_with_user()
+            resp = client.get("/languages")
+        assert resp.status_code == 401
+
+    def test_valid_app_token_allows_request(self):
+        with patch.object(main, "_APP_TOKEN", "secret-token"):
+            client = _client_with_user()
+            headers = {"X-App-Token": "secret-token"}
+            resp = client.get("/languages", headers=headers)
+        assert resp.status_code == 200
+
+
 # ── /session ──────────────────────────────────────────────────────────────────
 
 VALID_SESSION_BODY = {
@@ -73,8 +97,8 @@ class TestCreateSession:
         return _client_with_user()
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_returns_session_fields(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_returns_session_fields(self, mock_token):
         client = self._make_client()
         resp = client.post("/session", json=VALID_SESSION_BODY)
         assert resp.status_code == 200
@@ -85,32 +109,32 @@ class TestCreateSession:
         assert body["livekit_url"] == os.environ["LIVEKIT_URL"]
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_invalid_level_returns_422(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_invalid_level_returns_422(self, mock_token):
         client = self._make_client()
         body = {**VALID_SESSION_BODY, "level": "Z9"}
         resp = client.post("/session", json=body)
         assert resp.status_code == 422
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_invalid_topic_returns_422(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_invalid_topic_returns_422(self, mock_token):
         client = self._make_client()
         body = {**VALID_SESSION_BODY, "topic": "unknown_topic"}
         resp = client.post("/session", json=body)
         assert resp.status_code == 422
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_invalid_voice_id_returns_422(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_invalid_voice_id_returns_422(self, mock_token):
         client = self._make_client()
         body = {**VALID_SESSION_BODY, "voice_id": "not-a-real-voice"}
         resp = client.post("/session", json=body)
         assert resp.status_code == 422
 
     @patch("main.create_participant_token", side_effect=KeyError("LIVEKIT_API_KEY"))
-    @patch("main.asyncio.create_task")
-    def test_missing_env_returns_500(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_missing_env_returns_500(self, mock_token):
         client = self._make_client()
         resp = client.post("/session", json=VALID_SESSION_BODY)
         assert resp.status_code == 500
@@ -123,8 +147,8 @@ class TestCreateSession:
         assert resp.status_code == 401
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_participant_name_is_sanitized(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_participant_name_is_sanitized(self, mock_token):
         client = self._make_client()
         body = {**VALID_SESSION_BODY, "participant_name": "  "}
         resp = client.post("/session", json=body)
@@ -132,8 +156,8 @@ class TestCreateSession:
         assert resp.status_code == 200
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_defaults_to_portuguese_without_language(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_defaults_to_portuguese_without_language(self, mock_token):
         # Backward compat: existing app sends no `language` field.
         client = self._make_client()
         body = {k: v for k, v in VALID_SESSION_BODY.items()}
@@ -141,24 +165,24 @@ class TestCreateSession:
         assert resp.status_code == 200
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_voice_id_defaults_when_omitted(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_voice_id_defaults_when_omitted(self, mock_token):
         client = self._make_client()
         body = {"level": "B1", "topic": "livre", "language": "pt-PT"}
         resp = client.post("/session", json=body)
         assert resp.status_code == 200
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_unsupported_language_returns_422(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_unsupported_language_returns_422(self, mock_token):
         client = self._make_client()
         body = {**VALID_SESSION_BODY, "language": "de-DE", "voice_id": None}
         resp = client.post("/session", json=body)
         assert resp.status_code == 422
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_not_ready_language_returns_422(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_not_ready_language_returns_422(self, mock_token):
         # French has no configured voices yet → rejected.
         client = self._make_client()
         body = {"level": "B1", "topic": "livre", "language": "fr-FR"}
@@ -166,13 +190,60 @@ class TestCreateSession:
         assert resp.status_code == 422
 
     @patch("main.create_participant_token", return_value="tok-abc")
-    @patch("main.asyncio.create_task")
-    def test_voice_from_wrong_language_returns_422(self, mock_task, mock_token):
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_voice_from_wrong_language_returns_422(self, mock_token):
         # A pt voice id under fr-FR is invalid (and fr-FR is not ready anyway).
         client = self._make_client()
         body = {**VALID_SESSION_BODY, "language": "fr-FR"}
         resp = client.post("/session", json=body)
         assert resp.status_code == 422
+
+
+class TestSpawnBot:
+    @pytest.mark.asyncio
+    async def test_spawn_bot_invokes_run_bot(self):
+        import bot
+
+        bot_run = AsyncMock(return_value=None)
+        with patch.object(bot, "run_bot", new=bot_run):
+            await main._spawn_bot(
+                room_url="wss://test",
+                token="bot-token",
+                room_name="tutor-room",
+                level="B1",
+                topic="livre",
+                voice_id="DMcOknq8n1B6XshFIJKJ",
+                language="pt-PT",
+            )
+
+        bot_run.assert_awaited_once_with(
+            room_url="wss://test",
+            token="bot-token",
+            room_name="tutor-room",
+            level="B1",
+            topic="livre",
+            voice_id="DMcOknq8n1B6XshFIJKJ",
+            language="pt-PT",
+            on_ready=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_spawn_bot_logs_exceptions_and_returns(self):
+        import bot
+
+        bot_run = AsyncMock(side_effect=RuntimeError("boom"))
+        with patch.object(bot, "run_bot", new=bot_run):
+            await main._spawn_bot(
+                room_url="wss://test",
+                token="bot-token",
+                room_name="tutor-room",
+                level="B1",
+                topic="livre",
+                voice_id="DMcOknq8n1B6XshFIJKJ",
+                language="pt-PT",
+            )
+
+        assert bot_run.await_count == 1
 
 
 class TestLanguages:
@@ -377,3 +448,128 @@ class TestVoicePreview:
         client = self._make_client()
         resp = client.get(f"/voice-preview/{_VALID_VOICE}")
         assert resp.status_code == 500
+
+
+# ── Room lifecycle / bot status tracking ─────────────────────────────────────
+
+import httpx  # noqa: E402 — already imported at module level, kept here for clarity
+import bot  # noqa: E402 — patched via references below
+
+
+@pytest_asyncio.fixture
+async def async_client():
+    main.app.dependency_overrides[main.require_user] = lambda: VALID_USER
+    with patch("database.init_db", new=AsyncMock()):
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            yield client
+    main.app.dependency_overrides.pop(main.require_user, None)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_room_states():
+    # Ensure the lock lives in the same event loop as the test.
+    main._room_states_lock = asyncio.Lock()
+    async with main._room_states_lock:
+        main._room_states.clear()
+    yield
+    async with main._room_states_lock:
+        for state in list(main._room_states.values()):
+            if state.task is not None and not state.task.done():
+                state.task.cancel()
+                try:
+                    await state.task
+                except asyncio.CancelledError:
+                    pass
+        main._room_states.clear()
+
+
+class TestRoomLifecycle:
+    @pytest.mark.asyncio
+    async def test_create_session_stores_starting_state(self, async_client):
+        async def never_ending_run_bot(*args, **kwargs):
+            await asyncio.Event().wait()
+
+        with patch("bot.run_bot", new=never_ending_run_bot):
+            with patch("main.create_participant_token", return_value="tok-abc"):
+                resp = await async_client.post("/session", json=VALID_SESSION_BODY)
+        assert resp.status_code == 200
+        room_name = resp.json()["room_name"]
+        status_resp = await async_client.get(f"/session/{room_name}/status")
+        assert status_resp.status_code == 200
+        assert status_resp.json()["status"] == "starting"
+
+    @pytest.mark.asyncio
+    async def test_bot_ready_callback_marks_ready(self, async_client):
+        async def fake_run_bot(*args, on_ready=None, **kwargs):
+            if on_ready is not None:
+                await on_ready()
+            await asyncio.Event().wait()
+
+        with patch("bot.run_bot", new=fake_run_bot):
+            with patch("main.create_participant_token", return_value="tok-abc"):
+                resp = await async_client.post("/session", json=VALID_SESSION_BODY)
+                await asyncio.sleep(0)
+        assert resp.status_code == 200
+        room_name = resp.json()["room_name"]
+        status_resp = await async_client.get(f"/session/{room_name}/status")
+        assert status_resp.status_code == 200
+        assert status_resp.json()["status"] == "ready"
+
+    @pytest.mark.asyncio
+    async def test_bot_failure_marks_status_failed(self, async_client):
+        with patch("bot.run_bot", side_effect=RuntimeError("boom")):
+            with patch("main.create_participant_token", return_value="tok-abc"):
+                resp = await async_client.post("/session", json=VALID_SESSION_BODY)
+                await asyncio.sleep(0)
+        assert resp.status_code == 200
+        room_name = resp.json()["room_name"]
+        status_resp = await async_client.get(f"/session/{room_name}/status")
+        assert status_resp.status_code == 200
+        assert status_resp.json()["status"] == "failed"
+
+    @pytest.mark.asyncio
+    async def test_status_isolated_between_users(self, async_client):
+        async def never_ending_run_bot(*args, **kwargs):
+            await asyncio.Event().wait()
+
+        with patch("bot.run_bot", new=never_ending_run_bot):
+            with patch("main.create_participant_token", return_value="tok-abc"):
+                resp = await async_client.post("/session", json=VALID_SESSION_BODY)
+        room_name = resp.json()["room_name"]
+        main.app.dependency_overrides[main.require_user] = lambda: {
+            "id": 2,
+            "username": "other",
+        }
+        status_resp = await async_client.get(f"/session/{room_name}/status")
+        assert status_resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_finished_tasks_are_removed(self, async_client):
+        async def fake_run_bot(*args, on_ready=None, **kwargs):
+            if on_ready is not None:
+                await on_ready()
+
+        with patch("bot.run_bot", new=fake_run_bot):
+            with patch("main.create_participant_token", return_value="tok-abc"):
+                resp = await async_client.post("/session", json=VALID_SESSION_BODY)
+                await asyncio.sleep(0)
+        room_name = resp.json()["room_name"]
+        await main._cleanup_finished_tasks()
+        async with main._room_states_lock:
+            assert room_name not in main._room_states
+
+    @pytest.mark.asyncio
+    async def test_lifespan_cancels_running_tasks(self):
+        async def long_task():
+            await asyncio.sleep(100)
+
+        task = asyncio.create_task(long_task())
+        state = main.RoomState(status="starting", user_id=1, task=task)
+        main._room_states_lock = asyncio.Lock()
+        async with main._room_states_lock:
+            main._room_states["room-test"] = state
+        with patch("database.init_db", new=AsyncMock()):
+            async with main.app.router.lifespan_context(main.app):
+                pass
+        assert state.task.cancelled()

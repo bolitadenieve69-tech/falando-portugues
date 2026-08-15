@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
-import { createSession, saveSessionRemote } from '../../../services/api';
+import { createSession, fetchSessionStatus, saveSessionRemote } from '../../../services/api';
 import { saveSession } from '../../../services/history';
 import { loadPreferences } from '../../../services/preferences';
 import type {
@@ -54,7 +54,7 @@ export interface UseVoiceSessionReturn {
   startSession: (config: SessionConfig) => Promise<void>;
   endSession: () => Promise<void>;
   toggleMute: () => void;
-  sendTextMessage: (text: string) => void;
+  sendTextMessage: (text: string) => Promise<void>;
   isMuted: boolean;
   /** True while LiveKit detects the local participant is speaking. */
   isUserSpeaking: boolean;
@@ -75,6 +75,12 @@ export function useVoiceSession(): UseVoiceSessionReturn {
   const sessionStartRef = useRef<number>(0);
   const sessionConfigRef = useRef<SessionConfig | null>(null);
   const transcriptRef = useRef<TranscriptEntry[]>([]);
+  const statusRef = useRef<SessionStatus>('idle');
+  const tutorPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   const addTranscriptEntry = useCallback(
     (speaker: 'user' | 'tutor', rawText: string) => {
@@ -95,6 +101,68 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     [],
   );
 
+  const stopTutorPolling = useCallback(() => {
+    if (tutorPollRef.current) {
+      clearTimeout(tutorPollRef.current);
+      tutorPollRef.current = null;
+    }
+  }, []);
+
+  const waitForTutor = useCallback(
+    (roomName: string, room: Room) => {
+      const startTime = Date.now();
+      const TUTOR_TIMEOUT_MS = 30_000;
+      const POLL_INTERVAL_MS = 2_000;
+
+      const check = async () => {
+        if (statusRef.current !== 'connecting') {
+          return;
+        }
+
+        if (Date.now() - startTime > TUTOR_TIMEOUT_MS) {
+          stopTutorPolling();
+          setError('O tutor de voz não ligou a tempo. Tenta novamente.');
+          setStatus('error');
+          await room.disconnect();
+          roomRef.current = null;
+          return;
+        }
+
+        try {
+          const tutorStatus = await fetchSessionStatus(roomName);
+          if (tutorStatus === 'ready') {
+            stopTutorPolling();
+            setStatus('active');
+            return;
+          }
+          if (tutorStatus === 'failed' || tutorStatus === 'ended') {
+            stopTutorPolling();
+            setError('O tutor de voz não conseguiu ligar. Tenta novamente.');
+            setStatus('error');
+            await room.disconnect();
+            roomRef.current = null;
+            return;
+          }
+        } catch (err) {
+          stopTutorPolling();
+          const message =
+            err instanceof Error
+              ? err.message
+              : 'Erro ao verificar estado do tutor.';
+          setError(message);
+          setStatus('error');
+          await room.disconnect();
+          roomRef.current = null;
+          return;
+        }
+
+        tutorPollRef.current = setTimeout(check, POLL_INTERVAL_MS);
+      };
+
+      tutorPollRef.current = setTimeout(check, POLL_INTERVAL_MS);
+    },
+    [stopTutorPolling],
+  );
   const startSession = useCallback(
     async (config: SessionConfig) => {
       setStatus('connecting');
@@ -146,6 +214,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         room.on(RoomEvent.Disconnected, () => {
           setStatus('ended');
           setIsUserSpeaking(false);
+          roomRef.current = null;
         });
 
         // Detect when the local user is speaking (VAD from LiveKit).
@@ -167,18 +236,21 @@ export function useVoiceSession(): UseVoiceSessionReturn {
           setError(`Microfone: ${msg}`);
         }
 
-        setStatus('active');
+        // 5. Wait for the tutor bot to join before marking the session active.
+        waitForTutor(data.roomName, room);
       } catch (err) {
+        stopTutorPolling();
         const message =
           err instanceof Error ? err.message : 'Erro ao conectar';
         setError(message);
         setStatus('error');
       }
     },
-    [addTranscriptEntry],
+    [addTranscriptEntry, waitForTutor, stopTutorPolling],
   );
 
   const endSession = useCallback(async () => {
+    stopTutorPolling();
     const endedAt = Date.now();
 
     if (roomRef.current) {
@@ -211,7 +283,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
 
     setStatus('ended');
     setSessionData(null);
-  }, []);
+  }, [stopTutorPolling]);
 
   /**
    * Toggle microphone mute state.
@@ -228,14 +300,31 @@ export function useVoiceSession(): UseVoiceSessionReturn {
   }, [isMuted]);
 
   /** Send a typed message to the bot via the LiveKit data channel. */
-  const sendTextMessage = useCallback((text: string) => {
+  const isPromise = (value: unknown): value is Promise<unknown> =>
+    typeof value === 'object' && value !== null && 'then' in value && typeof (value as any).then === 'function';
+
+  const sendTextMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || !roomRef.current) return;
+
     const payload = new TextEncoder().encode(
       JSON.stringify({ type: 'user_text', text: trimmed }),
     );
-    roomRef.current.localParticipant.publishData(payload, { reliable: true });
-    addTranscriptEntry('user', trimmed);
+
+    try {
+      const result = roomRef.current.localParticipant.publishData(payload, {
+        reliable: true,
+      });
+
+      if (isPromise(result)) {
+        await result;
+      }
+
+      addTranscriptEntry('user', trimmed);
+    } catch (err) {
+      console.warn('[livekit] publishData failed', err);
+      setError('Erro ao enviar mensagem. Verifique a conexão.');
+    }
   }, [addTranscriptEntry]);
 
   return {

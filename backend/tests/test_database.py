@@ -33,6 +33,32 @@ async def test_init_db_creates_table():
 
 
 @pytest.mark.asyncio
+async def test_init_db_creates_parent_directory(tmp_path):
+    from database import init_db
+    db_file = tmp_path / "nested" / "data" / "test.db"
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setenv("DB_PATH", str(db_file))
+    import importlib
+    import database
+    importlib.reload(database)
+    try:
+        await database.init_db()
+        assert db_file.exists()
+        assert db_file.parent.exists()
+    finally:
+        monkeypatch.undo()
+
+
+@pytest.mark.asyncio
+async def test_get_cached_translation_auto_initializes_db():
+    from database import get_cached_translation, DB_PATH
+    assert not DB_PATH.exists()
+    result = await get_cached_translation("casa", "pt", "es")
+    assert result is None
+    assert DB_PATH.exists()
+
+
+@pytest.mark.asyncio
 async def test_register_device_returns_token():
     from database import init_db, register_device
     await init_db()

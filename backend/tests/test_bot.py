@@ -23,7 +23,8 @@ for _k, _v in _TEST_ENV.items():
     if not os.environ.get(_k):
         os.environ[_k] = _v
 
-from bot import TranscriptPublisher, _SerialAnthropicLLM  # noqa: E402
+import bot
+from bot import TranscriptPublisher, _SerialAnthropicLLM, run_bot  # noqa: E402
 from tests.conftest import (  # noqa: E402 — use stubs registered in conftest
     Frame,
     FrameDirection,
@@ -220,14 +221,13 @@ class TestSerialAnthropicLLM:
         mock_super.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_llm_frame_dropped_when_locked(self):
+    async def test_llm_frame_queues_latest_pending_frame_when_locked(self):
         llm = _SerialAnthropicLLM()
-        call_count = 0
+        processed_frames = []
 
         async def _slow_super(self_arg, frame, direction):
-            nonlocal call_count
+            processed_frames.append(frame)
             await asyncio.sleep(0.05)
-            call_count += 1
 
         with patch.object(_ParentLLM, "process_frame", new=_slow_super):
             frame1 = LLMContextFrame()
@@ -236,8 +236,223 @@ class TestSerialAnthropicLLM:
             task = asyncio.create_task(llm.process_frame(frame1, FrameDirection.DOWNSTREAM))
             await asyncio.sleep(0)  # yield so task acquires the lock
 
-            # Second frame arrives while first is in-flight → should be dropped
             await llm.process_frame(frame2, FrameDirection.DOWNSTREAM)
             await task
 
-        assert call_count == 1  # Only frame1 was processed
+        assert len(processed_frames) == 2
+        assert processed_frames[0] is frame1
+        assert processed_frames[1] is frame2
+
+    @pytest.mark.asyncio
+    async def test_llm_frame_dropped_if_same_frame_requeued(self):
+        llm = _SerialAnthropicLLM()
+        processed_frames = []
+
+        async def _slow_super(self_arg, frame, direction):
+            processed_frames.append(frame)
+            await asyncio.sleep(0.05)
+
+        with patch.object(_ParentLLM, "process_frame", new=_slow_super):
+            frame1 = LLMContextFrame()
+            frame2 = LLMContextFrame()
+
+            task = asyncio.create_task(llm.process_frame(frame1, FrameDirection.DOWNSTREAM))
+            await asyncio.sleep(0)
+            await llm.process_frame(frame2, FrameDirection.DOWNSTREAM)
+            await llm.process_frame(frame2, FrameDirection.DOWNSTREAM)
+            await task
+
+        assert len(processed_frames) == 2
+        assert processed_frames[1] is frame2
+
+
+class TestRunBot:
+    @pytest.mark.asyncio
+    async def test_run_bot_succeeds_first_attempt(self):
+        with patch.object(bot, "_run_pipeline", new=AsyncMock(return_value=None)) as mock_pipeline:
+            with patch("bot.load_dotenv"):
+                await run_bot("wss://test", "token", room_name="room1")
+        mock_pipeline.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_bot_retries_then_succeeds(self):
+        pipeline = AsyncMock(side_effect=[Exception("boom"), None])
+        with patch.object(bot, "_run_pipeline", new=pipeline):
+            with patch("bot.load_dotenv"):
+                with patch("bot.random.uniform", return_value=0.5):
+                    with patch("asyncio.sleep", new=AsyncMock()) as mock_sleep:
+                        await run_bot("wss://test", "token", room_name="room1")
+        assert pipeline.await_count == 2
+        mock_sleep.assert_awaited_once_with(1.5)
+
+    @pytest.mark.asyncio
+    async def test_run_bot_raises_after_max_retries(self):
+        pipeline = AsyncMock(side_effect=Exception("persistent failure"))
+        with patch.object(bot, "_run_pipeline", new=pipeline):
+            with patch("bot.load_dotenv"):
+                with patch("asyncio.sleep", new=AsyncMock()) as mock_sleep:
+                    with pytest.raises(Exception, match="persistent failure"):
+                        await run_bot("wss://test", "token", room_name="room1", max_retries=3)
+        assert pipeline.await_count == 3
+        assert mock_sleep.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_run_pipeline_cancels_task_on_disconnect(self, monkeypatch):
+        created: dict[str, object] = {}
+
+        class DummyTask:
+            def __init__(self, *args, **kwargs):
+                created["task"] = self
+                self.cancelled = False
+
+            async def cancel(self):
+                self.cancelled = True
+
+            async def queue_frames(self, frames):
+                return
+
+            def event_handler(self, event_name):
+                def decorator(handler):
+                    setattr(self, f"_handler_{event_name}", handler)
+                    return handler
+
+                return decorator
+
+        class DummyTransport:
+            def __init__(self, *args, **kwargs):
+                created["transport"] = self
+
+            def input(self):
+                return MagicMock()
+
+            def output(self):
+                return MagicMock()
+
+            def event_handler(self, event_name):
+                def decorator(handler):
+                    setattr(self, f"_handler_{event_name}", handler)
+                    return handler
+
+                return decorator
+
+        class DummyRunner:
+            async def run(self, task):
+                # no-op; allow the pipeline setup to complete
+                return
+
+        class DummyLiveOptions:
+            def __init__(self, *args, **kwargs):
+                pass
+
+        class DummyInputParams:
+            def __init__(self, *args, **kwargs):
+                pass
+
+        monkeypatch.setattr(bot, "PipelineTask", DummyTask)
+        monkeypatch.setattr(bot, "LiveKitTransport", DummyTransport)
+        monkeypatch.setattr(bot, "PipelineRunner", DummyRunner)
+        monkeypatch.setattr(bot, "LiveOptions", DummyLiveOptions)
+        monkeypatch.setattr(bot.AnthropicLLMService, "InputParams", DummyInputParams, raising=False)
+
+        await bot._run_pipeline(
+            room_url="wss://test",
+            token="token",
+            room_name="room1",
+            level="B1",
+            topic="livre",
+            voice_id="DMcOknq8n1B6XshFIJKJ",
+            language="pt_pt",
+        )
+
+        transport = created.get("transport")
+        task = created.get("task")
+        assert transport is not None
+        assert task is not None
+
+        handler = getattr(transport, "_handler_on_disconnected", None)
+        assert handler is not None
+
+        await handler(transport)
+        assert task.cancelled is True
+
+
+class TestOnReadyCallback:
+    @pytest.mark.asyncio
+    async def test_on_ready_is_called_when_first_participant_joins(self, monkeypatch):
+        created: dict[str, object] = {}
+        ready_called = False
+
+        async def on_ready():
+            nonlocal ready_called
+            ready_called = True
+
+        class DummyTask:
+            def __init__(self, *args, **kwargs):
+                created["task"] = self
+
+            async def cancel(self):
+                pass
+
+            async def queue_frames(self, frames):
+                pass
+
+            def event_handler(self, event_name):
+                def decorator(handler):
+                    setattr(self, f"_handler_{event_name}", handler)
+                    return handler
+
+                return decorator
+
+        class DummyTransport:
+            def __init__(self, *args, **kwargs):
+                created["transport"] = self
+
+            def input(self):
+                return MagicMock()
+
+            def output(self):
+                return MagicMock()
+
+            def event_handler(self, event_name):
+                def decorator(handler):
+                    setattr(self, f"_handler_{event_name}", handler)
+                    return handler
+
+                return decorator
+
+        class DummyRunner:
+            async def run(self, task):
+                return
+
+        class DummyLiveOptions:
+            def __init__(self, *args, **kwargs):
+                pass
+
+        class DummyInputParams:
+            def __init__(self, *args, **kwargs):
+                pass
+
+        monkeypatch.setattr(bot, "PipelineTask", DummyTask)
+        monkeypatch.setattr(bot, "LiveKitTransport", DummyTransport)
+        monkeypatch.setattr(bot, "PipelineRunner", DummyRunner)
+        monkeypatch.setattr(bot, "LiveOptions", DummyLiveOptions)
+        monkeypatch.setattr(bot.AnthropicLLMService, "InputParams", DummyInputParams, raising=False)
+
+        await bot._run_pipeline(
+            room_url="wss://test",
+            token="token",
+            room_name="room1",
+            level="B1",
+            topic="livre",
+            voice_id="DMcOknq8n1B6XshFIJKJ",
+            language="pt_pt",
+            on_ready=on_ready,
+        )
+
+        transport = created.get("transport")
+        assert transport is not None
+        handler = getattr(transport, "_handler_on_first_participant_joined", None)
+        assert handler is not None
+
+        await handler(transport, "user-1")
+        assert ready_called is True

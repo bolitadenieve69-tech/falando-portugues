@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import secrets
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import aiosqlite
@@ -20,8 +22,48 @@ def _token_expiry() -> int:
     return int(time.time()) + TOKEN_TTL_SECONDS
 
 
+def _ensure_db_path() -> None:
+    if DB_PATH.parent and not DB_PATH.parent.exists():
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+
+async def _open_connection() -> aiosqlite.Connection:
+    _ensure_db_path()
+    conn = await aiosqlite.connect(DB_PATH)
+    await conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+_db_init_lock = asyncio.Lock()
+_db_initialized = False
+
+
+async def _ensure_initialized() -> None:
+    global _db_initialized
+    if _db_initialized:
+        return
+    async with _db_init_lock:
+        if _db_initialized:
+            return
+        await init_db()
+        _db_initialized = True
+
+
+@asynccontextmanager
+async def _connect_db() -> aiosqlite.Connection:
+    await _ensure_initialized()
+    conn = await _open_connection()
+    try:
+        yield conn
+    finally:
+        await conn.close()
+
+
 async def init_db() -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
+    _ensure_db_path()
+    db = await _open_connection()
+    try:
+        await db.execute("PRAGMA journal_mode=WAL")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,6 +106,8 @@ async def init_db() -> None:
         )
         await _migrate_token_expiry(db)
         await db.commit()
+    finally:
+        await db.close()
 
 
 async def _migrate_token_expiry(db: aiosqlite.Connection) -> None:
@@ -84,7 +128,7 @@ async def register_device(
     """Create a new user. Returns the session token, or None if device already exists."""
     token = secrets.token_hex(32)
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
+        async with _connect_db() as db:
             await db.execute(
                 "INSERT INTO users"
                 " (device_id, username, password_hash, token, token_expires_at, created_at)"
@@ -98,7 +142,7 @@ async def register_device(
 
 
 async def get_user_by_device(device_id: str) -> dict | None:
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with _connect_db() as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT * FROM users WHERE device_id = ?", (device_id,)
@@ -108,7 +152,7 @@ async def get_user_by_device(device_id: str) -> dict | None:
 
 
 async def get_user_by_token(token: str) -> dict | None:
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with _connect_db() as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT * FROM users WHERE token = ? AND token_expires_at > ?",
@@ -121,19 +165,21 @@ async def get_user_by_token(token: str) -> dict | None:
 async def rotate_token(device_id: str) -> str:
     """Issue a fresh token for the device (called on every login)."""
     new_token = secrets.token_hex(32)
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+    async with _connect_db() as db:
+        cursor = await db.execute(
             "UPDATE users SET token = ?, token_expires_at = ? WHERE device_id = ?",
             (new_token, _token_expiry(), device_id),
         )
         await db.commit()
+        if cursor.rowcount == 0:
+            raise ValueError(f"device not found: {device_id}")
     return new_token
 
 
 async def get_cached_translation(
     word: str, from_lang: str, to_lang: str
 ) -> str | None:
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with _connect_db() as db:
         async with db.execute(
             "SELECT translation FROM translations"
             " WHERE word = ? AND from_lang = ? AND to_lang = ?",
@@ -146,7 +192,7 @@ async def get_cached_translation(
 async def cache_translation(
     word: str, from_lang: str, to_lang: str, translation: str
 ) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with _connect_db() as db:
         await db.execute(
             "INSERT OR REPLACE INTO translations"
             " (word, from_lang, to_lang, translation, created_at)"
@@ -164,14 +210,34 @@ _SESSION_COLUMNS = (
 )
 
 
-async def save_session(user_id: int, record: dict) -> None:
-    """Persist a completed session. Idempotent on session id (upsert)."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT OR REPLACE INTO sessions"
-            " (id, user_id, topic, level, started_at, ended_at,"
-            "  duration_seconds, message_count, correction_count, excerpt)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+async def save_session(user_id: int, record: dict) -> bool:
+    """Persist a completed session.
+
+    Uses an atomic SQLite upsert that only updates an existing row when the
+    existing `user_id` matches the caller's `user_id`. If the row exists but
+    belongs to a different user, the operation is rejected and no change is
+    applied. Returns True when the row was inserted or updated, False when
+    rejected due to ownership conflict.
+    """
+    async with _connect_db() as db:
+        cursor = await db.execute(
+            """
+            INSERT INTO sessions
+              (id, user_id, topic, level, started_at, ended_at,
+               duration_seconds, message_count, correction_count, excerpt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              topic = excluded.topic,
+              level = excluded.level,
+              started_at = excluded.started_at,
+              ended_at = excluded.ended_at,
+              duration_seconds = excluded.duration_seconds,
+              message_count = excluded.message_count,
+              correction_count = excluded.correction_count,
+              excerpt = excluded.excerpt
+            WHERE sessions.user_id = excluded.user_id
+            RETURNING id
+            """,
             (
                 record["id"],
                 user_id,
@@ -185,12 +251,19 @@ async def save_session(user_id: int, record: dict) -> None:
                 record["excerpt"],
             ),
         )
+        row = await cursor.fetchone()
         await db.commit()
+
+        # If RETURNING produced no row, the conflict WHERE-clause prevented
+        # the update because the existing row belonged to a different user.
+        if row is None:
+            return False
+        return True
 
 
 async def get_sessions(user_id: int, limit: int = 50) -> list[dict]:
     """Return the user's sessions, newest first."""
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with _connect_db() as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             f"SELECT {', '.join(_SESSION_COLUMNS)} FROM sessions"

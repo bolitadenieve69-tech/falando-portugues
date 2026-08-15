@@ -4,6 +4,8 @@ import asyncio
 import json
 import logging
 import os
+import random
+from typing import Callable
 
 from dotenv import load_dotenv
 from loguru import logger as loguru_logger
@@ -120,24 +122,35 @@ class TranscriptPublisher(IdentityFilter):
 class _SerialAnthropicLLM(AnthropicLLMService):
     """Prevents concurrent Anthropic API calls.
 
-    Drops LLMContextFrames that arrive while a generation is already in-flight
-    to avoid HTTP 429 errors from rapid user interruptions.
+    While a generation is already in-flight, keep only the latest pending
+    LLMContextFrame. This preserves the most recent user intent without
+    overwhelming the model with duplicate or stale requests.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._generation_lock = asyncio.Lock()
+        self._pending_context_frame: LLMContextFrame | None = None
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         if isinstance(frame, LLMContextFrame):
             loguru_logger.info("[llm] LLMContextFrame received — lock={}", self._generation_lock.locked())
             if self._generation_lock.locked():
-                loguru_logger.warning("[llm-gate] already generating — dropping frame")
+                loguru_logger.warning("[llm-gate] already generating — queuing latest frame")
+                self._pending_context_frame = frame
                 return
+
             async with self._generation_lock:
-                loguru_logger.info("[llm] generation started")
-                await super().process_frame(frame, direction)
-                loguru_logger.info("[llm] generation complete")
+                current_frame = frame
+                while True:
+                    loguru_logger.info("[llm] generation started")
+                    await super().process_frame(current_frame, direction)
+                    loguru_logger.info("[llm] generation complete")
+                    if self._pending_context_frame is None:
+                        break
+                    current_frame = self._pending_context_frame
+                    self._pending_context_frame = None
+                    loguru_logger.info("[llm] processing pending queued frame")
         else:
             await super().process_frame(frame, direction)
 
@@ -151,18 +164,20 @@ async def run_bot(
     voice_id: str = "DMcOknq8n1B6XshFIJKJ",
     language: str = DEFAULT_LANGUAGE,
     max_retries: int = 3,
+    on_ready: Callable[[], None] | None = None,
 ) -> None:
     load_dotenv(override=True)
 
     for attempt in range(1, max_retries + 1):
         try:
-            await _run_pipeline(room_url, token, room_name, level, topic, voice_id, language)
+            await _run_pipeline(room_url, token, room_name, level, topic, voice_id, language, on_ready=on_ready)
             return
         except Exception as exc:
             if attempt < max_retries:
-                wait = 2 ** (attempt - 1)
+                base_wait = min(30, 2 ** (attempt - 1))
+                wait = base_wait + random.uniform(0.0, 1.0)
                 logger.warning(
-                    "[bot] %s — attempt %d/%d failed (%s). Retrying in %ds…",
+                    "[bot] %s — attempt %d/%d failed (%s). Retrying in %.1fs…",
                     room_name, attempt, max_retries, exc, wait,
                 )
                 await asyncio.sleep(wait)
@@ -179,6 +194,7 @@ async def _run_pipeline(
     topic: str,
     voice_id: str,
     language: str = DEFAULT_LANGUAGE,
+    on_ready: Callable[[], None] | None = None,
 ) -> None:
     profile = get_language(language) or get_language(DEFAULT_LANGUAGE)
 
@@ -264,6 +280,13 @@ async def _run_pipeline(
             loguru_logger.info("[bot] room reference set on publishers")
         except Exception as exc:
             loguru_logger.warning("[bot] could not set room on publishers: {}", exc)
+        # Notify the backend that the tutor is connected and ready.
+        if on_ready is not None:
+            try:
+                await on_ready()
+                loguru_logger.info("[bot] on_ready callback completed")
+            except Exception as exc:
+                loguru_logger.warning("[bot] on_ready callback failed: {}", exc)
         # Trigger the opening greeting by injecting an initial user turn.
         loguru_logger.info("[bot] queuing initial LLMRunFrame for opening greeting")
         await task.queue_frames([LLMRunFrame()])
@@ -295,11 +318,24 @@ async def _run_pipeline(
         except Exception as exc:
             loguru_logger.warning("[bot] data message error: {}", exc)
 
+    @transport.event_handler("on_disconnected")
+    async def on_disconnected(transport):
+        loguru_logger.warning(
+            "[bot] room disconnected — cancelling pipeline: %s",
+            room_name,
+        )
+        await task.cancel()
+
+    @transport.event_handler("on_before_disconnect")
+    async def on_before_disconnect(transport):
+        loguru_logger.info("[bot] livekit disconnect requested for %s", room_name)
+
     async def _enforce_max_duration() -> None:
         await asyncio.sleep(MAX_SESSION_SECONDS)
         loguru_logger.info(
-            "[bot] {} reached max duration ({}s) — cancelling pipeline",
-            room_name, MAX_SESSION_SECONDS,
+            "[bot] %s reached max duration (%ds) — cancelling pipeline",
+            room_name,
+            MAX_SESSION_SECONDS,
         )
         await task.cancel()
 
@@ -308,4 +344,9 @@ async def _run_pipeline(
         runner = PipelineRunner()
         await runner.run(task)
     finally:
-        watchdog.cancel()
+        if not watchdog.done():
+            watchdog.cancel()
+            try:
+                await watchdog
+            except asyncio.CancelledError:
+                pass
