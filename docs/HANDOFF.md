@@ -177,14 +177,19 @@ npm run ts                        # typecheck TypeScript
 npx jest --watchAll=false         # tests móviles (41 tests)
 ```
 
-**Backend** — requiere un entorno Python con las deps de `backend/requirements.txt`.
-El virtualenv `backend/luso_tutor_arm/` (ARM, con pipecat real) se usó en desarrollo,
-pero es un artefacto local desechable (ignorado por git). Los tests usan stubs de
-pipecat (`backend/tests/conftest.py`), así que corren en cualquier venv con
-`pytest`, `fastapi`, `httpx`, `aiosqlite`, `bcrypt`, `anthropic`, `slowapi`, `python-dotenv`:
+**Backend** — los tests stubean pipecat (`backend/tests/conftest.py`), así que NO hace
+falta instalar el pesado `pipecat-ai`. Usa el fichero de deps ligero:
 ```bash
-cd backend && python -m pytest tests/ -q     # 115 tests
+python -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements-test.txt
+cd backend && python -m pytest tests/ -q
 ```
+El virtualenv `backend/luso_tutor_arm/` (ARM, con pipecat real) se usó en desarrollo
+para comprobar imports contra la librería real, pero es un artefacto local desechable
+(ignorado por git).
+
+**CI** — `.github/workflows/ci.yml` corre en cada push a `main` y en cada PR: typecheck
++ jest (Node 22) y pytest (Python 3.12). Los tres pasos son los mismos comandos de arriba.
 
 **Estado de la última verificación (2026-07-24):** 115 backend + 41 móvil + `tsc`
 limpio. Además se arrancó el backend real con el `.env` y se probó el contrato HTTP
@@ -226,8 +231,8 @@ Anthropic, formato de corrección, voces configuradas como PT-PT).
 4. **Solo después de validar el portugués**: activar francés (elegir voces reales de
    ElevenLabs) como primer idioma piloto, luego italiano e inglés.
 
-**Ideas no implementadas (opcionales):** CI en GitHub Actions con los checks de arriba,
-Sentry en la app, ping externo a `/health` (UptimeRobot), y el selector de idioma en la UI.
+**Ideas no implementadas (opcionales):** Sentry en la app, ping externo a `/health`
+(UptimeRobot), y el selector de idioma en la UI.
 
 ---
 
