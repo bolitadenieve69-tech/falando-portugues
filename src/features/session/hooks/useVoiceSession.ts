@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
 import { createSession, fetchSessionStatus, saveSessionRemote } from '../../../services/api';
+import { captureError } from '../../../services/monitoring';
 import { saveSession } from '../../../services/history';
 import { loadPreferences } from '../../../services/preferences';
 import type {
@@ -238,6 +239,8 @@ export function useVoiceSession(): UseVoiceSessionReturn {
           err instanceof Error ? err.message : 'Erro ao conectar';
         setError(message);
         setStatus('error');
+        // Static tag only — never transcript content.
+        captureError(err, 'session-start');
       }
     },
     [addTranscriptEntry, waitForTutor, stopTutorPolling],

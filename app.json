@@ -45,7 +45,8 @@
         {
           "microphonePermission": "Falando Português usa o microfone para praticar conversação em português com o tutor de IA."
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "extra": {
       "router": {},

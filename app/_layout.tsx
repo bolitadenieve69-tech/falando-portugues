@@ -5,6 +5,10 @@ import { useEffect } from 'react';
 import { installDebugLog } from '../src/features/debug/useDebugLog';
 installDebugLog();
 
+import { initMonitoring } from '../src/services/monitoring';
+// No-op unless EXPO_PUBLIC_SENTRY_DSN is set.
+initMonitoring();
+
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';

@@ -231,8 +231,12 @@ Anthropic, formato de corrección, voces configuradas como PT-PT).
 4. **Solo después de validar el portugués**: activar francés (elegir voces reales de
    ElevenLabs) como primer idioma piloto, luego italiano e inglés.
 
-**Ideas no implementadas (opcionales):** Sentry en la app, ping externo a `/health`
-(UptimeRobot), y el selector de idioma en la UI.
+**Monitorización:** Sentry está integrado pero **desactivado** hasta que pegues un DSN
+en `EXPO_PUBLIC_SENTRY_DSN` (requiere dev build nuevo: es módulo nativo). El ping de
+uptime a `/health` está documentado pero hay que darlo de alta en UptimeRobot. Ambos
+pasos en [docs/monitoring.md](monitoring.md).
+
+**Ideas no implementadas (opcionales):** el selector de idioma en la UI.
 
 ---
 
