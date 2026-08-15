@@ -1,0 +1,860 @@
+<title>Falando Noturno</title>
+
+<style>
+  :root {
+    --page-bg: oklch(0.96 0.006 70);
+    --page-ink: oklch(0.28 0.012 60);
+    --page-dim: oklch(0.52 0.010 60);
+    --page-rule: oklch(0.88 0.008 70);
+    --page-panel: oklch(0.99 0.004 70);
+
+    /* App palette: warm nocturnal. Never #000, never #fff. */
+    --ground: oklch(0.145 0.012 55);
+    --lift: oklch(0.195 0.014 55);
+    --lift-2: oklch(0.245 0.014 55);
+    --ink: oklch(0.94 0.008 70);
+    --ink-dim: oklch(0.70 0.012 65);
+    --ink-faint: oklch(0.55 0.012 65);
+    --hairline: oklch(0.31 0.012 60);
+
+    --tutor: oklch(0.78 0.132 62);
+    --tutor-deep: oklch(0.52 0.115 52);
+    --you: oklch(0.80 0.095 215);
+    --you-deep: oklch(0.52 0.085 220);
+
+    --voice: var(--tutor);
+    --voice-deep: var(--tutor-deep);
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: oklch(0.16 0.010 60);
+      --page-ink: oklch(0.92 0.008 70);
+      --page-dim: oklch(0.65 0.010 65);
+      --page-rule: oklch(0.28 0.010 60);
+      --page-panel: oklch(0.20 0.010 60);
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: oklch(0.16 0.010 60);
+    --page-ink: oklch(0.92 0.008 70);
+    --page-dim: oklch(0.65 0.010 65);
+    --page-rule: oklch(0.28 0.010 60);
+    --page-panel: oklch(0.20 0.010 60);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  header.intro { max-width: 60ch; margin-bottom: 36px; }
+  header.intro h1 {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    font-size: clamp(28px, 5vw, 40px);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    margin: 0 0 12px;
+  }
+  header.intro p { margin: 0; color: var(--page-dim); font-size: 15px; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 390px) minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+  @media (max-width: 880px) {
+    .stage { grid-template-columns: minmax(0, 1fr); gap: 32px; justify-items: center; }
+  }
+
+  /* ── Phone ─────────────────────────────────────────────── */
+  .phone-col { position: sticky; top: 32px; width: 100%; max-width: 390px; }
+  @media (max-width: 880px) { .phone-col { position: static; } }
+
+  .switch {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--page-panel);
+    border: 1px solid var(--page-rule);
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .switch button {
+    flex: 1;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--page-dim);
+    font: inherit;
+    font-size: 13px;
+    padding: 8px 4px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 180ms var(--ease), background 180ms var(--ease);
+  }
+  .switch button[aria-selected="true"] {
+    background: var(--page-ink);
+    color: var(--page-bg);
+  }
+  .switch button:focus-visible { outline: 2px solid var(--tutor); outline-offset: 2px; }
+
+  .phone {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 390 / 844;
+    background: var(--ground);
+    border-radius: 46px;
+    padding: 10px;
+    box-shadow:
+      0 0 0 1.5px oklch(0.40 0.010 60),
+      0 40px 80px -30px oklch(0.10 0.02 55 / 0.6);
+    overflow: hidden;
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 37px;
+    overflow: hidden;
+    background: var(--ground);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .statusbar {
+    height: 40px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 26px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+  .statusbar .dots { display: flex; gap: 3px; align-items: center; }
+  .statusbar .dots i {
+    width: 3px; height: 9px; border-radius: 1px;
+    background: var(--ink); opacity: 0.9; display: block;
+  }
+  .statusbar .dots i:nth-child(1) { height: 5px; }
+  .statusbar .dots i:nth-child(2) { height: 7px; }
+  .statusbar .batt {
+    width: 22px; height: 11px; border-radius: 3px;
+    border: 1px solid oklch(0.94 0.008 70 / 0.6);
+    position: relative;
+  }
+  .statusbar .batt::after {
+    content: ""; position: absolute; inset: 2px; right: 7px;
+    background: var(--ink); border-radius: 1px;
+  }
+
+  .view { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .view[data-active="true"] { display: flex; }
+
+  /* ── Session ───────────────────────────────────────────── */
+  .s-top {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 26px 0;
+  }
+  .who { display: flex; align-items: baseline; gap: 9px; }
+  .who .name {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+  }
+  .who .lvl {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    font-weight: 600;
+  }
+  .clock {
+    font-size: 13px;
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  .halo {
+    position: absolute;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      color-mix(in oklch, var(--voice) 26%, transparent) 0%,
+      color-mix(in oklch, var(--voice-deep) 12%, transparent) 42%,
+      transparent 68%);
+    transition: background 700ms var(--ease);
+    animation: drift 7s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes drift {
+    0%, 100% { transform: scale(0.94); opacity: 0.75; }
+    50%      { transform: scale(1.06); opacity: 1; }
+  }
+
+  .rings { position: absolute; display: grid; place-items: center; }
+  .ring {
+    position: absolute;
+    width: 132px; height: 132px;
+    border-radius: 50%;
+    border: 1px solid color-mix(in oklch, var(--voice) 45%, transparent);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .speaking .ring { animation: pulse 2.6s var(--ease) infinite; }
+  .speaking .ring:nth-child(2) { animation-delay: 0.85s; }
+  .speaking .ring:nth-child(3) { animation-delay: 1.7s; }
+  @keyframes pulse {
+    0%   { transform: scale(1); opacity: 0.55; }
+    100% { transform: scale(2.15); opacity: 0; }
+  }
+
+  .core {
+    position: relative;
+    width: 132px; height: 132px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 38% 32%,
+        color-mix(in oklch, var(--voice) 38%, var(--lift)) 0%,
+        var(--lift) 62%);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--voice) 34%, transparent),
+      0 18px 44px -22px color-mix(in oklch, var(--voice) 70%, transparent);
+    transition: background 700ms var(--ease), box-shadow 700ms var(--ease), transform 420ms var(--ease);
+  }
+  .speaking .core { transform: scale(1.045); }
+
+  /* Amplitude bars: the only literal "voice" signal on screen. */
+  .bars { display: flex; align-items: center; gap: 4px; height: 34px; }
+  .bars span {
+    display: block;
+    width: 3px;
+    height: 6px;
+    border-radius: 2px;
+    background: var(--voice);
+    opacity: 0.85;
+    transition: background 700ms var(--ease);
+    will-change: transform;
+  }
+  .speaking .bars span { animation: amp 900ms var(--ease) infinite; }
+  .bars span:nth-child(1) { animation-delay: 0ms; }
+  .bars span:nth-child(2) { animation-delay: 120ms; }
+  .bars span:nth-child(3) { animation-delay: 60ms; }
+  .bars span:nth-child(4) { animation-delay: 200ms; }
+  .bars span:nth-child(5) { animation-delay: 90ms; }
+  @keyframes amp {
+    0%, 100% { transform: scaleY(1); }
+    50%      { transform: scaleY(3.4); }
+  }
+
+  .turn-label {
+    position: absolute;
+    bottom: 26px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+    color: var(--voice);
+    transition: color 700ms var(--ease);
+  }
+
+  /* Utterance: large, glanceable, serif. Not a chat log. */
+  .said {
+    flex: none;
+    padding: 0 30px 4px;
+    min-height: 132px;
+  }
+  .said .line {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 21px;
+    line-height: 1.36;
+    letter-spacing: -0.012em;
+    margin: 0;
+    color: var(--ink);
+    transition: opacity 420ms var(--ease);
+  }
+  .said .line.dim { color: var(--ink-faint); font-size: 15px; margin-bottom: 8px; }
+
+  /* Correction as a margin note, not an error box. */
+  .note {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--hairline);
+    display: none;
+  }
+  .note[data-show="true"] { display: block; animation: rise 520ms var(--ease); }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .note .tag {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    color: var(--tutor);
+    display: block;
+    margin-bottom: 5px;
+  }
+  .note p {
+    margin: 0;
+    font-family: ui-serif, Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink-dim);
+  }
+  .note b { font-style: normal; font-weight: 600; color: var(--ink); }
+
+  /* Transcript handle: available, not demanding. */
+  .handle {
+    flex: none;
+    display: grid;
+    place-items: center;
+    padding: 10px 0 2px;
+    gap: 7px;
+  }
+  .handle .grip {
+    width: 34px; height: 3px; border-radius: 2px;
+    background: var(--hairline);
+  }
+  .handle span {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+  }
+
+  .controls {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    padding: 14px 0 26px;
+  }
+  .ctl {
+    appearance: none;
+    border: 1px solid var(--hairline);
+    background: var(--lift);
+    color: var(--ink-dim);
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: background 180ms var(--ease), color 180ms var(--ease),
+                border-color 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .ctl:hover { background: var(--lift-2); color: var(--ink); }
+  .ctl:active { transform: scale(0.94); }
+  .ctl:focus-visible { outline: 2px solid var(--voice); outline-offset: 3px; }
+  .ctl.end {
+    background: color-mix(in oklch, oklch(0.55 0.17 25) 88%, var(--ground));
+    border-color: transparent;
+    color: oklch(0.97 0.01 30);
+    width: 62px; height: 62px;
+  }
+  .ctl.end:hover { background: oklch(0.60 0.18 25); }
+  .ctl svg { width: 21px; height: 21px; display: block; }
+  .ctl.end svg { width: 24px; height: 24px; }
+
+  /* ── Start screen ──────────────────────────────────────── */
+  .pad { padding: 0 30px; }
+  .greet {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 30px;
+    line-height: 1.16;
+    letter-spacing: -0.02em;
+    margin: 14px 0 4px;
+    font-weight: 500;
+  }
+  .greet em { font-style: italic; color: var(--tutor); }
+  .sub { color: var(--ink-faint); font-size: 13px; margin: 0 0 26px; }
+
+  .eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    color: var(--ink-faint);
+    margin: 0 0 12px;
+  }
+
+  .scale { display: flex; gap: 5px; margin-bottom: 30px; }
+  .scale button {
+    flex: 1;
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: var(--lift);
+    color: var(--ink-faint);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 9px 0;
+    cursor: pointer;
+    transition: background 180ms var(--ease), color 180ms var(--ease);
+  }
+  .scale button[aria-pressed="true"] {
+    background: color-mix(in oklch, var(--tutor) 88%, var(--ground));
+    color: oklch(0.18 0.03 55);
+  }
+  .scale button:focus-visible { outline: 2px solid var(--tutor); outline-offset: 2px; }
+
+  /* Topics as an editorial list. Not an icon-card grid. */
+  .topics { list-style: none; margin: 0 0 auto; padding: 0; }
+  .topics li { border-top: 1px solid var(--hairline); }
+  .topics li:last-child { border-bottom: 1px solid var(--hairline); }
+  .topics button {
+    width: 100%;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    padding: 13px 2px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    color: var(--ink-dim);
+    transition: color 180ms var(--ease), padding-left 220ms var(--ease);
+  }
+  .topics button:hover { color: var(--ink); padding-left: 6px; }
+  .topics button:focus-visible { outline: 2px solid var(--tutor); outline-offset: -2px; }
+  .topics .t {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+  }
+  .topics .hint { font-size: 11px; color: var(--ink-faint); }
+  .topics button[aria-pressed="true"] { color: var(--ink); }
+  .topics button[aria-pressed="true"] .t { color: var(--tutor); }
+  .topics button[aria-pressed="true"] .hint::after {
+    content: "";
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--tutor);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .go {
+    flex: none;
+    margin: 22px 0 26px;
+    appearance: none;
+    border: 0;
+    width: 100%;
+    padding: 17px;
+    border-radius: 14px;
+    background: var(--tutor);
+    color: oklch(0.18 0.03 55);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    transition: transform 180ms var(--ease), background 180ms var(--ease);
+  }
+  .go:hover { background: oklch(0.83 0.135 62); }
+  .go:active { transform: scale(0.985); }
+  .go:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  /* ── History ───────────────────────────────────────────── */
+  .spoken { margin: 14px 0 4px; display: flex; align-items: baseline; gap: 8px; }
+  .spoken .n {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 44px;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .spoken .u { font-size: 13px; color: var(--ink-dim); }
+  .spoken-note { color: var(--ink-faint); font-size: 12px; margin: 0 0 26px; }
+
+  .ledger { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
+  .ledger li {
+    padding: 13px 0;
+    border-top: 1px solid var(--hairline);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    align-items: baseline;
+  }
+  .ledger .top {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .ledger .when { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .ledger .meta {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 3px;
+  }
+  .ledger .track {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--lift-2);
+    overflow: hidden;
+  }
+  .ledger .fill {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--you);
+  }
+  .ledger .num { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+  /* ── Notes column ──────────────────────────────────────── */
+  .notes { max-width: 62ch; }
+  .notes h2 {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 21px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .notes section { padding: 22px 0; border-top: 1px solid var(--page-rule); }
+  .notes section:first-of-type { border-top: 0; padding-top: 0; }
+  .notes p { margin: 0 0 10px; font-size: 14.5px; color: var(--page-dim); }
+  .notes p:last-child { margin-bottom: 0; }
+  .notes strong { color: var(--page-ink); font-weight: 600; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .sw { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--page-dim); }
+  .sw i {
+    width: 22px; height: 22px; border-radius: 6px; display: block;
+    border: 1px solid var(--page-rule);
+  }
+  .kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    background: var(--page-panel);
+    border: 1px solid var(--page-rule);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .halo, .ring, .bars span { animation: none !important; }
+    .note[data-show="true"] { animation: none; }
+    * { transition-duration: 1ms !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Falando Noturno</h1>
+    <p>Rediseño de la app de conversación. Oscuro cálido, dos voces con color propio,
+       y una pantalla que se aparta para que hables.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone-col">
+      <div class="switch" role="tablist" aria-label="Pantallas">
+        <button role="tab" aria-selected="true" data-go="sess">Sessão</button>
+        <button role="tab" aria-selected="false" data-go="start">Início</button>
+        <button role="tab" aria-selected="false" data-go="hist">Histórico</button>
+      </div>
+
+      <div class="phone">
+        <div class="screen" id="screen">
+          <div class="statusbar">
+            <span>22:14</span>
+            <span class="dots"><i></i><i></i><i></i><span class="batt"></span></span>
+          </div>
+
+          <!-- SESSÃO -->
+          <div class="view" data-view="sess" data-active="true">
+            <div class="s-top">
+              <span class="who">
+                <span class="name">Patrício</span>
+                <span class="lvl">B1</span>
+              </span>
+              <span class="clock" id="clock">04:12</span>
+            </div>
+
+            <div class="field" id="field">
+              <div class="halo"></div>
+              <div class="rings">
+                <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+              </div>
+              <div class="core">
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+              <span class="turn-label" id="turnLabel">A OUVIR</span>
+            </div>
+
+            <div class="said">
+              <p class="line dim" id="prev">Boa noite. Conta-me, como foi o teu dia?</p>
+              <p class="line" id="curr">Fui no mercado esta manhã.</p>
+              <div class="note" id="note" data-show="false">
+                <span class="tag">CORREÇÃO</span>
+                <p>diz-se <b>fui ao mercado</b>, não <i>fui no mercado</i>.</p>
+              </div>
+            </div>
+
+            <div class="handle">
+              <span class="grip"></span>
+              <span>PUXA PARA VER A CONVERSA</span>
+            </div>
+
+            <div class="controls">
+              <button class="ctl" aria-label="Silenciar micro">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>
+                </svg>
+              </button>
+              <button class="ctl end" aria-label="Terminar sessão">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.5a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z"/>
+                  <path d="M2 2l20 20" stroke-width="2"/>
+                </svg>
+              </button>
+              <button class="ctl" aria-label="Escrever">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/>
+                  <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- INÍCIO -->
+          <div class="view" data-view="start">
+            <div class="pad" style="display:flex; flex-direction:column; height:100%;">
+              <h2 class="greet">Boa noite,<br><em>vamos falar?</em></h2>
+              <p class="sub">Última conversa há 2 dias, sobre comida.</p>
+
+              <p class="eyebrow">NÍVEL</p>
+              <div class="scale">
+                <button>A1</button><button>A2</button>
+                <button aria-pressed="true">B1</button>
+                <button>B2</button><button>C1</button><button>C2</button>
+              </div>
+
+              <p class="eyebrow">TEMA</p>
+              <ul class="topics">
+                <li><button aria-pressed="true"><span class="t">Conversa livre</span><span class="hint">o que surgir</span></button></li>
+                <li><button><span class="t">Viagens</span><span class="hint">turismo em Portugal</span></button></li>
+                <li><button><span class="t">Trabalho</span><span class="hint">vida profissional</span></button></li>
+                <li><button><span class="t">Comida</span><span class="hint">gastronomia</span></button></li>
+                <li><button><span class="t">Cultura</span><span class="hint">história e tradições</span></button></li>
+              </ul>
+
+              <button class="go">Começar a falar</button>
+            </div>
+          </div>
+
+          <!-- HISTÓRICO -->
+          <div class="view" data-view="hist">
+            <div class="pad" style="display:flex; flex-direction:column; height:100%; padding-bottom:22px;">
+              <p class="eyebrow" style="margin-top:14px;">TEMPO A FALAR</p>
+              <p class="spoken"><span class="n">3h 42m</span><span class="u">em 14 conversas</span></p>
+              <p class="spoken-note">Falar é o que faz a diferença. Não há rachas nem pontos.</p>
+
+              <p class="eyebrow">CONVERSAS</p>
+              <ul class="ledger">
+                <li>
+                  <span class="top">Comida</span><span class="when">2 dias</span>
+                  <span class="meta">
+                    <span class="track"><span class="fill" style="width:88%"></span></span>
+                    <span class="num">18 min · 3 correções</span>
+                  </span>
+                </li>
+                <li>
+                  <span class="top">Conversa livre</span><span class="when">5 dias</span>
+                  <span class="meta">
+                    <span class="track"><span class="fill" style="width:72%"></span></span>
+                    <span class="num">12 min · 7 correções</span>
+                  </span>
+                </li>
+                <li>
+                  <span class="top">Viagens</span><span class="when">6 dias</span>
+                  <span class="meta">
+                    <span class="track"><span class="fill" style="width:94%"></span></span>
+                    <span class="num">21 min · 2 correções</span>
+                  </span>
+                </li>
+                <li>
+                  <span class="top">Trabalho</span><span class="when">9 dias</span>
+                  <span class="meta">
+                    <span class="track"><span class="fill" style="width:64%"></span></span>
+                    <span class="num">9 min · 8 correções</span>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <section>
+        <h2>Dos voces, dos colores</h2>
+        <p>El problema real de una app de voz: mientras hablas, casi no miras la pantalla.
+           Así que el color hace el trabajo. La sala entera se tiñe de <strong>ámbar</strong>
+           cuando habla el tutor y de <strong>azul frío</strong> cuando hablas tú. Lo captas
+           por el rabillo del ojo, sin leer nada.</p>
+        <div class="swatches">
+          <span class="sw"><i style="background:oklch(0.78 0.132 62)"></i> Tutor, luz de lámpara</span>
+          <span class="sw"><i style="background:oklch(0.80 0.095 215)"></i> Tú, luz de luna</span>
+          <span class="sw"><i style="background:oklch(0.145 0.012 55)"></i> Fondo cálido</span>
+        </div>
+      </section>
+
+      <section>
+        <h2>La corrección no te riñe</h2>
+        <p>Hoy la corrección sale en un recuadro de color, que es el lenguaje visual de un
+           error. Aquí baja de tono: una línea fina, una etiqueta pequeña y cursiva de libro.
+           Una nota al margen, no una alarma. Hablar un idioma que no dominas ya da bastante
+           vergüenza sin que la app te señale.</p>
+      </section>
+
+      <section>
+        <h2>La transcripción estorba</h2>
+        <p>Una app de voz cuya pantalla es un chat se pelea consigo misma: te pone a leer
+           cuando debería ponerte a hablar. Aquí solo se ve <strong>la última frase</strong>,
+           grande y legible de un vistazo. La conversación completa sigue ahí, arrastrando
+           hacia arriba, pero no pide tu atención.</p>
+      </section>
+
+      <section>
+        <h2>Progreso sin culpa</h2>
+        <p>Nada de rachas ni de puntos. La única cifra grande es <strong>el tiempo que has
+           hablado</strong>, que es lo que de verdad mueve la aguja al aprender a hablar. Las
+           correcciones se cuentan, pero en pequeño: son información, no un castigo.</p>
+      </section>
+
+      <section>
+        <h2>Por qué no es verde</h2>
+        <p>App de idiomas lleva a verde, mascota y confeti. Tu tema actual es
+           <span class="kbd">#81db6e</span>, justo ese reflejo. El segundo reflejo, huir a un
+           minimalismo suizo en crema y negro, tampoco dice nada de este producto. El punto de
+           partida fue otro: alguien solo en su salón a las diez de la noche, hablando en voz
+           alta. Eso pide luz de lámpara, no un aula.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Screen switching
+  const tabs = document.querySelectorAll('.switch button');
+  const views = document.querySelectorAll('.view');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => b.setAttribute('aria-selected', String(b === btn)));
+      views.forEach(v => v.setAttribute('data-active', String(v.dataset.view === btn.dataset.go)));
+    });
+  });
+
+  // Topic + level selection
+  document.querySelectorAll('.topics button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.topics button').forEach(o => o.removeAttribute('aria-pressed'));
+      b.setAttribute('aria-pressed', 'true');
+    });
+  });
+  document.querySelectorAll('.scale button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.scale button').forEach(o => o.removeAttribute('aria-pressed'));
+      b.setAttribute('aria-pressed', 'true');
+    });
+  });
+
+  // Simulated conversation: drives the two-voice colour field.
+  const root    = document.documentElement;
+  const field   = document.getElementById('field');
+  const label   = document.getElementById('turnLabel');
+  const prev    = document.getElementById('prev');
+  const curr    = document.getElementById('curr');
+  const note    = document.getElementById('note');
+  const clockEl = document.getElementById('clock');
+
+  const TUTOR = ['oklch(0.78 0.132 62)', 'oklch(0.52 0.115 52)'];
+  const YOU   = ['oklch(0.80 0.095 215)', 'oklch(0.52 0.085 220)'];
+
+  function voice(who) {
+    const [c, d] = who === 'you' ? YOU : TUTOR;
+    root.style.setProperty('--voice', c);
+    root.style.setProperty('--voice-deep', d);
+  }
+
+  const script = [
+    { who: 'tutor', speak: true,  label: 'PATRÍCIO',
+      prev: 'Boa noite. Conta-me, como foi o teu dia?',
+      curr: 'Foste a algum sítio interessante?', note: false, ms: 3200 },
+    { who: 'you',   speak: true,  label: 'A FALAR',
+      prev: 'Foste a algum sítio interessante?',
+      curr: 'Fui no mercado esta manhã.', note: false, ms: 3000 },
+    { who: 'tutor', speak: false, label: 'A PENSAR',
+      prev: 'Foste a algum sítio interessante?',
+      curr: 'Fui no mercado esta manhã.', note: false, ms: 1100 },
+    { who: 'tutor', speak: true,  label: 'PATRÍCIO',
+      prev: 'Fui no mercado esta manhã.',
+      curr: 'Que bom. E o que compraste lá?', note: true, ms: 4200 },
+  ];
+
+  let i = 0;
+  function step() {
+    const s = script[i];
+    voice(s.who);
+    field.classList.toggle('speaking', s.speak);
+    label.textContent = s.label;
+    prev.textContent = s.prev;
+    curr.textContent = s.curr;
+    note.setAttribute('data-show', String(s.note));
+    i = (i + 1) % script.length;
+    setTimeout(step, s.ms);
+  }
+  step();
+
+  // Session clock
+  let secs = 252;
+  setInterval(() => {
+    secs++;
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    clockEl.textContent = `${m}:${s}`;
+  }, 1000);
+</script>
