@@ -10,7 +10,7 @@ import type {
   SessionConfig,
   LiveKitSessionData,
 } from '../types';
-import { parseCorrection } from '../utils/parseCorrection';
+import { parseTranscriptMessage } from '../utils/parseTranscriptMessage';
 
 /** Map known ElevenLabs voice IDs to display names. */
 const VOICE_NAMES: Record<string, string> = {
@@ -83,11 +83,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
   }, [status]);
 
   const addTranscriptEntry = useCallback(
-    (speaker: 'user' | 'tutor', rawText: string) => {
-      const { text, correction } =
-        speaker === 'tutor'
-          ? parseCorrection(rawText)
-          : { text: rawText, correction: undefined };
+    (speaker: 'user' | 'tutor', text: string, correction?: string) => {
       const entry: TranscriptEntry = {
         id: `${Date.now()}-${Math.random()}`,
         speaker,
@@ -191,22 +187,20 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         const room = new Room();
         roomRef.current = room;
 
-        // Receive transcript data messages sent by the Pipecat bot.
+        // Receive transcript data messages sent by the Pipecat bot. The backend
+        // already splits tutor replies into clean text + a separate correction
+        // field, so we forward that correction straight through (see
+        // parseTranscriptMessage) instead of re-parsing the clean text.
         room.on(
           RoomEvent.DataReceived,
           (payload: Uint8Array, _participant?: RemoteParticipant) => {
-            try {
-              const message = JSON.parse(new TextDecoder().decode(payload)) as {
-                type: string;
-                speaker?: string;
-                text: string;
-              };
-              if (message.type === 'transcript' && message.text) {
-                const speaker = message.speaker === 'user' ? 'user' : 'tutor';
-                addTranscriptEntry(speaker, message.text);
-              }
-            } catch {
-              // Ignore malformed data frames.
+            const message = parseTranscriptMessage(payload);
+            if (message) {
+              addTranscriptEntry(
+                message.speaker,
+                message.text,
+                message.correction,
+              );
             }
           },
         );
