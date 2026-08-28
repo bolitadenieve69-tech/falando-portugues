@@ -2,305 +2,310 @@
 
 <style>
   :root {
-    --bg: oklch(0.985 0.004 85);
-    --panel: oklch(1 0 0);
-    --ink: oklch(0.24 0.012 70);
-    --dim: oklch(0.50 0.010 75);
-    --faint: oklch(0.64 0.008 80);
-    --rule: oklch(0.90 0.006 80);
-    --rule-soft: oklch(0.945 0.005 80);
-    --gold: oklch(0.62 0.115 68);
-    --gold-soft: oklch(0.95 0.030 80);
-    --crit: oklch(0.52 0.150 28);
-    --crit-soft: oklch(0.955 0.028 30);
+    --bg: oklch(0.985 0.004 85); --panel: oklch(1 0 0);
+    --ink: oklch(0.24 0.012 70); --dim: oklch(0.50 0.010 75); --faint: oklch(0.64 0.008 80);
+    --rule: oklch(0.90 0.006 80); --rule-soft: oklch(0.945 0.005 80);
+    --gold: oklch(0.62 0.115 68); --gold-soft: oklch(0.95 0.030 80);
+    --crit: oklch(0.52 0.150 28); --crit-soft: oklch(0.955 0.028 30);
     --ok: oklch(0.50 0.075 155);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: oklch(0.165 0.010 152);
-      --panel: oklch(0.205 0.011 152);
-      --ink: oklch(0.93 0.007 90);
-      --dim: oklch(0.71 0.010 90);
-      --faint: oklch(0.57 0.010 95);
-      --rule: oklch(0.30 0.011 150);
-      --rule-soft: oklch(0.25 0.011 150);
-      --gold: oklch(0.80 0.130 72);
-      --gold-soft: oklch(0.26 0.045 70);
-      --crit: oklch(0.74 0.140 28);
-      --crit-soft: oklch(0.27 0.055 28);
+      --bg: oklch(0.165 0.010 152); --panel: oklch(0.205 0.011 152);
+      --ink: oklch(0.93 0.007 90); --dim: oklch(0.71 0.010 90); --faint: oklch(0.57 0.010 95);
+      --rule: oklch(0.30 0.011 150); --rule-soft: oklch(0.25 0.011 150);
+      --gold: oklch(0.80 0.130 72); --gold-soft: oklch(0.26 0.045 70);
+      --crit: oklch(0.74 0.140 28); --crit-soft: oklch(0.27 0.055 28);
       --ok: oklch(0.74 0.085 155);
     }
   }
   :root[data-theme="dark"] {
-    --bg: oklch(0.165 0.010 152);
-    --panel: oklch(0.205 0.011 152);
-    --ink: oklch(0.93 0.007 90);
-    --dim: oklch(0.71 0.010 90);
-    --faint: oklch(0.57 0.010 95);
-    --rule: oklch(0.30 0.011 150);
-    --rule-soft: oklch(0.25 0.011 150);
-    --gold: oklch(0.80 0.130 72);
-    --gold-soft: oklch(0.26 0.045 70);
-    --crit: oklch(0.74 0.140 28);
-    --crit-soft: oklch(0.27 0.055 28);
+    --bg: oklch(0.165 0.010 152); --panel: oklch(0.205 0.011 152);
+    --ink: oklch(0.93 0.007 90); --dim: oklch(0.71 0.010 90); --faint: oklch(0.57 0.010 95);
+    --rule: oklch(0.30 0.011 150); --rule-soft: oklch(0.25 0.011 150);
+    --gold: oklch(0.80 0.130 72); --gold-soft: oklch(0.26 0.045 70);
+    --crit: oklch(0.74 0.140 28); --crit-soft: oklch(0.27 0.055 28);
     --ok: oklch(0.74 0.085 155);
   }
 
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
+  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.55;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    line-height: 1.55; -webkit-font-smoothing: antialiased;
-  }
+    -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 820px; margin: 0 auto; padding: 44px 22px 90px; }
 
-  h1 {
-    font-family: ui-serif, Georgia, serif; font-weight: 500;
-    font-size: clamp(30px, 5vw, 40px); line-height: 1.12;
-    letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance;
-  }
+  h1 { font-family: ui-serif, Georgia, serif; font-weight: 500;
+    font-size: clamp(30px, 5vw, 40px); line-height: 1.12; letter-spacing: -0.02em;
+    margin: 0 0 10px; text-wrap: balance; }
   .lede { font-size: 16px; color: var(--dim); margin: 0 0 26px; max-width: 62ch; }
 
-  .meter {
-    display: flex; flex-wrap: wrap; gap: 0;
-    border: 1px solid var(--rule); border-radius: 10px;
-    overflow: hidden; background: var(--panel); margin-bottom: 40px;
-  }
+  .meter { display: flex; flex-wrap: wrap; border: 1px solid var(--rule);
+    border-radius: 10px; overflow: hidden; background: var(--panel); margin-bottom: 34px; }
   .meter div { flex: 1 1 150px; padding: 14px 16px; border-right: 1px solid var(--rule); }
   .meter div:last-child { border-right: 0; }
   .meter dt { font-size: 10px; letter-spacing: 0.14em; color: var(--faint); font-weight: 700; margin: 0 0 4px; }
-  .meter dd {
-    margin: 0; font-family: ui-serif, Georgia, serif; font-size: 25px;
-    letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
-  }
+  .meter dd { margin: 0; font-family: ui-serif, Georgia, serif; font-size: 23px;
+    letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .meter dd.small { font-family: inherit; font-size: 15px; letter-spacing: 0; line-height: 1.3; }
 
-  h2 {
-    font-family: ui-serif, Georgia, serif; font-weight: 500; font-size: 23px;
-    letter-spacing: -0.012em; margin: 44px 0 6px; text-wrap: balance;
-  }
-  h2:first-of-type { margin-top: 0; }
+  h2 { font-family: ui-serif, Georgia, serif; font-weight: 500; font-size: 23px;
+    letter-spacing: -0.012em; margin: 44px 0 6px; text-wrap: balance; }
   .sub { color: var(--dim); font-size: 14.5px; margin: 0 0 20px; max-width: 62ch; }
 
   .phase { border-top: 1px solid var(--rule); padding: 20px 0; }
   .phase:last-of-type { border-bottom: 1px solid var(--rule); }
-  .phase.critical { background: var(--crit-soft); border-radius: 10px; border: 1px solid var(--crit); padding: 20px; margin: 14px 0; }
+  .phase.critical { background: var(--crit-soft); border-radius: 10px;
+    border: 1px solid var(--crit); padding: 20px; margin: 14px 0; }
   .phead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
-  .pnum {
-    font-family: ui-serif, Georgia, serif; font-size: 15px; color: var(--gold);
-    font-variant-numeric: tabular-nums; flex: none;
-  }
+  .pnum { font-family: ui-serif, Georgia, serif; font-size: 15px; color: var(--gold);
+    font-variant-numeric: tabular-nums; flex: none; }
   .critical .pnum { color: var(--crit); }
   .ptitle { font-weight: 650; font-size: 16.5px; letter-spacing: -0.005em; }
-  .pdate {
-    margin-left: auto; font-size: 12px; color: var(--faint);
-    font-variant-numeric: tabular-nums; white-space: nowrap;
-  }
+  .pdate { margin-left: auto; font-size: 12px; color: var(--faint);
+    font-variant-numeric: tabular-nums; white-space: nowrap; }
   .pwhy { font-size: 14px; color: var(--dim); margin: 0 0 12px; max-width: 62ch; }
   .critical .pwhy { color: var(--ink); }
+  .tag { font-size: 10px; letter-spacing: 0.1em; font-weight: 700; color: var(--gold);
+    border: 1px solid var(--gold); border-radius: 4px; padding: 1px 6px; flex: none; }
+  .critical .tag { color: var(--crit); border-color: var(--crit); }
 
   ul.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
-  ul.checks li { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; }
-  ul.checks input {
-    appearance: none; flex: none; width: 16px; height: 16px; margin-top: 3px;
+  ul.checks li { font-size: 14.5px; }
+  ul.checks label { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+  ul.checks input { appearance: none; flex: none; width: 16px; height: 16px; margin-top: 3px;
     border: 1.5px solid var(--rule); border-radius: 4px; background: var(--panel);
-    cursor: pointer; transition: background 150ms, border-color 150ms;
-  }
+    cursor: pointer; transition: background 150ms, border-color 150ms; }
   ul.checks input:checked { background: var(--ok); border-color: var(--ok); }
   ul.checks input:checked + span { color: var(--faint); text-decoration: line-through; }
   ul.checks input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-  ul.checks label { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
 
   .tablewrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--panel); }
   th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
   th { font-size: 10px; letter-spacing: 0.12em; color: var(--faint); font-weight: 700; }
   tr:last-child td { border-bottom: 0; }
+  td b { font-weight: 650; }
 
   ol.toc { counter-reset: c; list-style: none; margin: 0; padding: 0; }
-  ol.toc li {
-    counter-increment: c; position: relative; padding: 10px 0 10px 34px;
-    border-bottom: 1px solid var(--rule-soft); font-size: 14.5px;
-  }
+  ol.toc li { counter-increment: c; position: relative; padding: 11px 0 11px 34px;
+    border-bottom: 1px solid var(--rule-soft); font-size: 14.5px; }
   ol.toc li:last-child { border-bottom: 0; }
-  ol.toc li::before {
-    content: counter(c); position: absolute; left: 0; top: 10px;
-    font-family: ui-serif, Georgia, serif; color: var(--gold); font-size: 14px;
-  }
+  ol.toc li::before { content: counter(c); position: absolute; left: 0; top: 11px;
+    font-family: ui-serif, Georgia, serif; color: var(--gold); font-size: 14px; }
   ol.toc b { font-weight: 650; }
-  ol.toc em { font-style: normal; color: var(--dim); display: block; font-size: 13.5px; margin-top: 1px; }
+  ol.toc em { font-style: normal; color: var(--dim); display: block; font-size: 13.5px; margin-top: 2px; }
 
   .avoid { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
   .avoid li { font-size: 14.5px; color: var(--dim); padding-left: 20px; position: relative; }
-  .avoid li::before { content: "×"; position: absolute; left: 3px; color: var(--crit); font-weight: 700; }
+  .avoid li::before { content: "\00d7"; position: absolute; left: 3px; color: var(--crit); font-weight: 700; }
 
-  .note {
-    border: 1px solid var(--gold); background: var(--gold-soft);
-    border-radius: 10px; padding: 16px 18px; margin: 22px 0; font-size: 14.5px;
-  }
+  .note { border: 1px solid var(--gold); background: var(--gold-soft); border-radius: 10px;
+    padding: 16px 18px; margin: 22px 0; font-size: 14.5px; }
+  .note.alarm { border-color: var(--crit); background: var(--crit-soft); }
   .note b { font-weight: 650; }
-  footer { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--faint); }
+  .note ul { margin: 8px 0 0; padding-left: 20px; }
+  .note li { margin-bottom: 4px; }
+  footer { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--rule);
+    font-size: 13px; color: var(--faint); }
 </style>
 
 <div class="wrap">
   <h1>Ruta al TFM</h1>
-  <p class="lede">Plan de diez semanas para llevar Falando Português de proyecto técnico
-     a trabajo defendible. No añade tecnología: añade evidencia.</p>
+  <p class="lede">Plan revisado contra los requisitos oficiales de Racks Academy.
+     Se califica APTO o NO APTO, así que el objetivo no es lucirse: es cumplir cada
+     apartado sin ambigüedad.</p>
 
   <dl class="meter">
     <div><dt>HOY</dt><dd>28 ago</dd></div>
-    <div><dt>ENTREGA</dt><dd>31 oct</dd></div>
-    <div><dt>SEMANAS</dt><dd>9 + 1</dd></div>
-    <div><dt>RIESGO Nº 1</dt><dd style="font-size:17px; font-family:inherit; letter-spacing:0">Demo sin probar</dd></div>
+    <div><dt>ENTREGA</dt><dd class="small">Un año desde tu matrícula<br>(confirmar fecha)</dd></div>
+    <div><dt>CALIFICACIÓN</dt><dd class="small">APTO / NO APTO</dd></div>
+    <div><dt>OBLIGATORIO</dt><dd class="small">Vídeo del proyecto<br>en funcionamiento</dd></div>
   </dl>
 
+  <div class="note alarm">
+    <b>Dos cosas que tienes que confirmar tú antes de fijar el calendario:</b>
+    <ul>
+      <li><b>Tu fecha exacta de matrícula.</b> El plazo no es "finales de octubre": es
+          un año justo desde que entraste al curso. Si entraste el 20 de octubre, vence
+          el 20 de octubre.</li>
+      <li><b>Qué módulos has cursado.</b> El apartado 4 exige enlazar cada herramienta
+          usada con los cursos concretos que hiciste. Sin esa lista no puedo redactarlo.</li>
+    </ul>
+  </div>
+
+  <h2>Lo que cambia respecto al plan anterior</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>ANTES SUPONÍA</th><th>LO QUE PIDEN DE VERDAD</th></tr></thead>
+      <tbody>
+        <tr><td>El vídeo era un seguro por si fallaba la demo</td><td><b>Es obligatorio.</b> Sin vídeo del proyecto en acción no hay entrega válida</td></tr>
+        <tr><td>Se puntúa con nota</td><td><b>APTO o NO APTO.</b> Sobresalir no suma: cumplir cada apartado sí</td></tr>
+        <tr><td>Hacía falta estado del arte académico</td><td><b>No lo piden.</b> La estructura es profesional, de portfolio, en cinco apartados</td></tr>
+        <tr><td>Francés era necesario para demostrar la tesis</td><td><b>Opcional.</b> El apartado 5 admite propuestas de escalabilidad, no exige haberlas construido</td></tr>
+        <tr><td>Nada sobre competencias</td><td><b>Apartado obligatorio:</b> vincular cada herramienta con los módulos que cursaste</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <h2>La ruta crítica</h2>
-  <p class="sub">Las fases van en orden porque cada una depende de la anterior. La primera
-     es la única con fecha inamovible.</p>
+  <p class="sub">Cinco fases. La primera sigue siendo innegociable, y ahora con más motivo:
+     sin la app funcionando no hay vídeo, y sin vídeo no hay entrega.</p>
 
   <div class="phase critical">
     <div class="phead">
       <span class="pnum">01</span>
       <span class="ptitle">Desbloquear: primera sesión de voz real</span>
+      <span class="tag">BLOQUEA TODO</span>
       <span class="pdate">28 ago – 4 sep</span>
     </div>
-    <p class="pwhy">Todo lo demás está detrás de esto. Si el bucle de voz falla, necesitas las
-       ocho semanas restantes para arreglarlo, y por eso va primero. Sin demo no hay TFM.</p>
+    <p class="pwhy">El vídeo obligatorio exige mostrar el proyecto en acción. Todo lo demás
+       depende de que esto funcione, y si falla necesitas las semanas restantes para arreglarlo.</p>
     <ul class="checks">
       <li><label><input type="checkbox" data-k="d1"><span>Desplegar en el VPS: <code>git pull &amp;&amp; docker compose up -d --build</code></span></label></li>
       <li><label><input type="checkbox" data-k="d2"><span>Verificar que <code>APP_TOKEN</code> no está vacío en el <code>.env</code> del servidor</span></label></li>
       <li><label><input type="checkbox" data-k="d3"><span>Comprobar que las tres voces de ElevenLabs siguen activas</span></label></li>
       <li><label><input type="checkbox" data-k="d4"><span>Generar el dev build de Expo e instalarlo en el móvil</span></label></li>
       <li><label><input type="checkbox" data-k="d5"><span>Una conversación completa: el tutor te oye, responde en portugués y lo escuchas</span></label></li>
-      <li><label><input type="checkbox" data-k="d6"><span>Confirmar que las correcciones aparecen en pantalla (el arreglo sigue sin verse en vivo)</span></label></li>
+      <li><label><input type="checkbox" data-k="d6"><span>Confirmar que las correcciones se ven en pantalla</span></label></li>
+      <li><label><input type="checkbox" data-k="d7"><span>Confirmar que se está escribiendo <code>latency.jsonl</code></span></label></li>
     </ul>
   </div>
 
   <div class="phase">
     <div class="phead">
       <span class="pnum">02</span>
-      <span class="ptitle">Medir la latencia</span>
+      <span class="ptitle">Medir: las métricas de éxito</span>
+      <span class="tag">APARTADO 3</span>
       <span class="pdate">5 – 18 sep</span>
     </div>
-    <p class="pwhy">Tu capítulo de resultados. Tienes un presupuesto declarado de 2,5 segundos
-       y cero mediciones: convertir eso en datos es lo que más sube la nota por hora invertida.</p>
+    <p class="pwhy">Piden indicadores cuantitativos y evidencias del impacto con datos
+       antes y después. Ya tienes la instrumentación puesta y dos comparativas reales que
+       enseñar.</p>
     <ul class="checks">
-      <li><label><input type="checkbox" data-k="m1"><span>Instrumentar el pipeline con marcas de tiempo por etapa (fin de habla, primer token, primer audio)</span></label></li>
-      <li><label><input type="checkbox" data-k="m2"><span>Guardar las medidas de forma estructurada para poder analizarlas</span></label></li>
-      <li><label><input type="checkbox" data-k="m3"><span>Reunir entre 15 y 20 sesiones para tener una distribución, no anécdotas</span></label></li>
-      <li><label><input type="checkbox" data-k="m4"><span>Tabla de resultados: mediana y p90 por etapa, contrastadas con el presupuesto</span></label></li>
-      <li><label><input type="checkbox" data-k="m5"><span>Si no se cumple, documentar por qué: eso también es un resultado válido</span></label></li>
+      <li><label><input type="checkbox" data-k="m1"><span>Acumular entre 15 y 20 turnos para tener una distribución, no anécdotas</span></label></li>
+      <li><label><input type="checkbox" data-k="m2"><span>Generar la tabla: <code>python scripts/latency_report.py /data/latency.jsonl --csv</code></span></label></li>
+      <li><label><input type="checkbox" data-k="m3"><span><b>Antes y después nº 1:</b> síntesis de voz por HTTP frente a streaming</span></label></li>
+      <li><label><input type="checkbox" data-k="m4"><span><b>Antes y después nº 2:</b> coste por sesión con el modelo actual frente al rápido</span></label></li>
+      <li><label><input type="checkbox" data-k="m5"><span>Capturas del sistema en funcionamiento para las evidencias</span></label></li>
     </ul>
   </div>
 
   <div class="phase">
     <div class="phead">
       <span class="pnum">03</span>
-      <span class="ptitle">Demostrar que la arquitectura generaliza</span>
-      <span class="pdate">19 – 25 sep</span>
+      <span class="ptitle">Validar con personas: los testimonios</span>
+      <span class="tag">APARTADO 3</span>
+      <span class="pdate">19 sep – 2 oct</span>
     </div>
-    <p class="pwhy">Tu tesis central es que cada idioma es configuración y no un fork. Hoy lo
-       afirmas; con francés funcionando lo demuestras en directo. Es la primera pregunta que
-       te hará el tribunal.</p>
+    <p class="pwhy">Piden explícitamente métricas cualitativas y testimonios. Con dos o tres
+       personas basta: no es una muestra estadística, es evidencia de utilidad real.</p>
     <ul class="checks">
-      <li><label><input type="checkbox" data-k="f1"><span>Elegir dos o tres voces francesas en ElevenLabs y rellenar <code>fr_fr.py</code></span></label></li>
-      <li><label><input type="checkbox" data-k="f2"><span>Probar calidad de reconocimiento y voz con un hablante nativo si es posible</span></label></li>
-      <li><label><input type="checkbox" data-k="f3"><span>Medir también la latencia en francés: la tabla comparativa es un argumento potente</span></label></li>
-      <li><label><input type="checkbox" data-k="f4"><span>Empezar a reclutar testers ya, para no perder tiempo en la fase siguiente</span></label></li>
+      <li><label><input type="checkbox" data-k="u1"><span>De 2 a 3 testers, con al menos uno no técnico</span></label></li>
+      <li><label><input type="checkbox" data-k="u2"><span>Pasar el cuestionario de <code>docs/beta/private-beta-guide.md</code></span></label></li>
+      <li><label><input type="checkbox" data-k="u3"><span>Pedir una frase textual citable de cada uno</span></label></li>
+      <li><label><input type="checkbox" data-k="u4"><span>Extraer del servidor los datos de sesión: duración, correcciones, abandono</span></label></li>
     </ul>
   </div>
 
   <div class="phase">
     <div class="phead">
       <span class="pnum">04</span>
-      <span class="ptitle">Validar con personas</span>
-      <span class="pdate">26 sep – 9 oct</span>
+      <span class="ptitle">Grabar el vídeo</span>
+      <span class="tag">OBLIGATORIO</span>
+      <span class="pdate">3 – 9 oct</span>
     </div>
-    <p class="pwhy">Convierte el trabajo en investigación aplicada. La guía de beta y el
-       cuestionario ya están escritos, y el servidor ya guarda los datos de cada sesión.</p>
+    <p class="pwhy">Requisito explícito: el proyecto en acción y una explicación de su
+       funcionamiento. Merece su propia fase porque grabar audio de voz limpio con la app
+       sonando a la vez tiene más truco del que parece.</p>
     <ul class="checks">
-      <li><label><input type="checkbox" data-k="u1"><span>De 3 a 5 testers, con al menos uno no técnico</span></label></li>
-      <li><label><input type="checkbox" data-k="u2"><span>Pasar el cuestionario de <code>docs/beta/private-beta-guide.md</code></span></label></li>
-      <li><label><input type="checkbox" data-k="u3"><span>Extraer del servidor los datos de sesión: duración, correcciones, abandono</span></label></li>
-      <li><label><input type="checkbox" data-k="u4"><span>Documentar los fallos encontrados con sus pasos de reproducción</span></label></li>
+      <li><label><input type="checkbox" data-k="v1"><span>Guion breve: problema, solución, demo en vivo, resultados</span></label></li>
+      <li><label><input type="checkbox" data-k="v2"><span>Grabar una conversación real de principio a fin, sin cortes</span></label></li>
+      <li><label><input type="checkbox" data-k="v3"><span>Mostrar una corrección gramatical apareciendo en pantalla</span></label></li>
+      <li><label><input type="checkbox" data-k="v4"><span>Enseñar la arquitectura y la tabla de latencias</span></label></li>
+      <li><label><input type="checkbox" data-k="v5"><span>Repetir la toma hasta que la demo salga limpia: es tu evidencia principal</span></label></li>
     </ul>
   </div>
 
   <div class="phase">
     <div class="phead">
       <span class="pnum">05</span>
-      <span class="ptitle">Escribir y blindar la defensa</span>
+      <span class="ptitle">Escribir la memoria y entregar</span>
       <span class="pdate">10 – 30 oct</span>
     </div>
-    <p class="pwhy">Tres semanas para la memoria. Empieza a tomar notas desde la semana uno,
-       no aquí: reconstruir decisiones dos meses después cuesta el doble.</p>
+    <p class="pwhy">Siguiendo su estructura de cinco apartados, no una estructura académica
+       inventada. Entrega por correo a trabajofinal@rackslabs.com.</p>
     <ul class="checks">
-      <li><label><input type="checkbox" data-k="w1"><span>Redactar la memoria siguiendo el índice de abajo</span></label></li>
-      <li><label><input type="checkbox" data-k="w2"><span><b>Grabar un vídeo de la demo funcionando</b>, como seguro ante un fallo en directo</span></label></li>
-      <li><label><input type="checkbox" data-k="w3"><span>Preparar la presentación y ensayarla cronometrada</span></label></li>
-      <li><label><input type="checkbox" data-k="w4"><span>Anticipar las preguntas del tribunal y llevar respuestas preparadas</span></label></li>
+      <li><label><input type="checkbox" data-k="w1"><span>Redactar los cinco apartados en su orden</span></label></li>
+      <li><label><input type="checkbox" data-k="w2"><span>Apartado 4: enlazar cada herramienta con el módulo donde la aprendiste</span></label></li>
+      <li><label><input type="checkbox" data-k="w3"><span>Preparar la presentación visual</span></label></li>
+      <li><label><input type="checkbox" data-k="w4"><span>Subir vídeo y anexos a un Drive público y comprobar el enlace</span></label></li>
+      <li><label><input type="checkbox" data-k="w5"><span>Decidir si autorizas la difusión pública de la memoria</span></label></li>
+      <li><label><input type="checkbox" data-k="w6"><span>Enviar a trabajofinal@rackslabs.com</span></label></li>
     </ul>
   </div>
 
   <div class="phase">
     <div class="phead">
       <span class="pnum">06</span>
-      <span class="ptitle">Colchón</span>
-      <span class="pdate">1 – 7 nov</span>
+      <span class="ptitle">Opcional si sobra tiempo: activar francés</span>
+      <span class="pdate">colchón</span>
     </div>
-    <p class="pwhy">Reservado a propósito. Si lo gastas en escribir, es que el plan iba justo;
-       si no lo necesitas, mejor.</p>
+    <p class="pwhy">Ya no es necesario: el apartado 5 acepta propuestas de escalabilidad sin
+       exigir que estén construidas. Pero si lo activas, pasas de proponer a demostrar, y en
+       el vídeo luce mucho.</p>
   </div>
 
-  <h2>Riesgos y seguros</h2>
-  <p class="sub">Los cuatro modos de fallo reales de este calendario.</p>
-  <div class="tablewrap">
-    <table>
-      <thead><tr><th>RIESGO</th><th>SEGURO</th></tr></thead>
-      <tbody>
-        <tr><td>El bucle de voz no funciona o va lento</td><td>Se descubre en la semana 1, quedan 8 para corregirlo. Es toda la razón del orden.</td></tr>
-        <tr><td>La demo falla el día de la defensa</td><td>Vídeo grabado de respaldo. Es el seguro más barato que existe.</td></tr>
-        <tr><td>Los testers no responden</td><td>Reclutar en la semana 4 y convocar de más: siempre cae alguno.</td></tr>
-        <tr><td>La memoria se alarga</td><td>Tomar notas desde el primer día y usar el colchón de noviembre.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h2>Índice propuesto de la memoria</h2>
-  <p class="sub">Propuesta a validar contra la rúbrica de Racks, que todavía no he visto.</p>
+  <h2>Índice de la memoria</h2>
+  <p class="sub">Su estructura oficial, con lo que pones en cada apartado.</p>
   <ol class="toc">
-    <li><b>Introducción y objetivos</b><em>El problema: practicar habla en portugués europeo, no brasileño.</em></li>
-    <li><b>Estado del arte</b><em>Apps de conversación con IA y arquitecturas de voz en tiempo real. Qué hacen y qué no cubren.</em></li>
-    <li><b>Análisis y requisitos</b><em>Incluido el presupuesto de latencia de 2,5 s como requisito no funcional medible.</em></li>
-    <li><b>Arquitectura</b><em>Pipeline de voz, transporte WebRTC, contexto delimitado de cada componente.</em></li>
-    <li><b>Implementación</b><em>Los tres puntos fuertes: pipeline en tiempo real, perfiles de idioma, y seguridad.</em></li>
-    <li><b>Metodología: desarrollo asistido por IA</b><em>Tu capítulo original: varias IA sobre un mismo repositorio, documento de traspaso, y una IA encontrando un fallo de seguridad en código escrito por otra.</em></li>
-    <li><b>Evaluación y resultados</b><em>Latencia medida, generalización a francés, y validación con usuarios reales.</em></li>
-    <li><b>Conclusiones y trabajo futuro</b><em>Incluido el análisis de viabilidad y coste por sesión.</em></li>
+    <li><b>Identificación del problema u oportunidad</b>
+      <em>Practicar habla en portugués europeo, no brasileño. Las apps existentes dan
+      portugués de Brasil por defecto, y las clases con profesor son caras y con horario.
+      Sector, usuarios afectados y por qué importa.</em></li>
+    <li><b>Diseño de la solución con IA</b>
+      <em>Las herramientas y por qué cada una: Deepgram para transcripción, Claude como
+      tutor, ElevenLabs para la voz, LiveKit para el transporte. La metodología del pipeline
+      y la arquitectura multiidioma.</em></li>
+    <li><b>Implementación y validación</b>
+      <em>El proceso de construcción, las métricas de latencia medidas, los antes y después,
+      y los testimonios de los testers. El apartado con más peso.</em></li>
+    <li><b>Vinculación con competencias adquiridas</b>
+      <em>Obligatorio y fácil de olvidar: cada herramienta enlazada con el módulo concreto
+      del curso. Necesito tu lista de módulos.</em></li>
+    <li><b>Conclusiones y proyección futura</b>
+      <em>Lecciones aprendidas, incluido el fallo de seguridad detectado y corregido. Y la
+      escalabilidad: los tres idiomas pendientes y el coste por sesión.</em></li>
   </ol>
 
+  <h2>Un ángulo que encaja con lo que piden</h2>
+  <p class="sub">Es una academia de IA y valoran la metodología. Tienes una historia que casi
+     nadie puede contar: varias IA distintas trabajando sobre el mismo repositorio, con
+     documento de traspaso entre ellas, y una IA encontrando un fallo de seguridad en código
+     escrito por otra. Cabe en el apartado 2 como metodología y en el 5 como lección
+     aprendida.</p>
+
   <h2>Lo que no vas a hacer</h2>
-  <p class="sub">Tentaciones que restan tiempo sin sumar nota. Escritas aquí para poder decirles que no.</p>
   <ul class="avoid">
-    <li>Activar italiano e inglés. Con un segundo idioma la tesis ya queda demostrada.</li>
-    <li>Migrar a Postgres o Kubernetes porque suene más profesional.</li>
-    <li>Hacer versión web.</li>
-    <li>Añadir funcionalidades nuevas al producto.</li>
-    <li>Publicar en las tiendas: nada de eso se puntúa aquí.</li>
+    <li>Estado del arte académico: no lo piden.</li>
+    <li>Activar italiano e inglés.</li>
+    <li>Migrar a Postgres o Kubernetes.</li>
+    <li>Versión web o publicación en tiendas.</li>
+    <li>Funcionalidades nuevas.</li>
   </ul>
 
   <div class="note">
-    <b>Pendiente de confirmar:</b> no he visto la rúbrica de Racks Academy. Si piden componente
-    investigador formal, el capítulo 2 crece; si es un proyecto profesional, crecen el 5 y el 7.
-    En cuanto tengas el enunciado, el plan se ajusta en una tarde.
+    <b>Sobre los derechos:</b> Racks se queda los derechos de la memoria y la presentación,
+    y puede difundirlas públicamente. <b>El código y la app siguen siendo tuyos.</b> Si no
+    quieres que publiquen la memoria, hay que pedirlo por escrito al mismo correo.
   </div>
 
   <footer>
-    Falando Português · Plan revisado el 28 de agosto de 2026 · Las casillas se guardan en este navegador.
+    Falando Português · Plan revisado el 28 de agosto de 2026 contra los requisitos oficiales ·
+    Las casillas se guardan en este navegador.
   </footer>
 </div>
 
 <script>
-  // Persist checkbox state per viewer. Storage can throw in private windows.
   const boxes = document.querySelectorAll('ul.checks input[type="checkbox"]');
   boxes.forEach(b => {
     const key = 'tfm-' + b.dataset.k;
