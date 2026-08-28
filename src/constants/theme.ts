@@ -1,47 +1,78 @@
+/**
+ * "Falando Noturno" palette.
+ *
+ * The scene this is designed for: someone alone in their living room at ten at
+ * night, speaking a language they don't master yet, feeling slightly ridiculous.
+ * That asks for lamp light, not a classroom.
+ *
+ * The Portuguese flag is spread across the palette rather than stuck on as a
+ * sticker: its green is taken almost to black and becomes the ground, the gold
+ * of the armillary sphere becomes the light (and the tutor's voice), and the red
+ * is kept for the one action that ends the conversation.
+ *
+ * Authored in OKLCH for perceptual evenness, then converted to hex because React
+ * Native does not accept oklch(). See docs/design/falando-noturno.html.
+ * Every text pairing below clears WCAG AA on the ground (most clear AAA).
+ */
 export const Colors = {
-  background: '#121412',
-  surface: '#121412',
-  surfaceDim: '#121412',
-  surfaceContainerLowest: '#0d0f0d',
-  surfaceContainerLow: '#1a1c1a',
-  surfaceContainer: '#1e201e',
-  surfaceContainerHigh: '#292a28',
-  surfaceContainerHighest: '#333533',
-  surfaceBright: '#383a37',
-  surfaceVariant: '#333533',
+  // Ground: the flag's green, taken almost to black.
+  background: '#080c09',
+  surface: '#080c09',
+  surfaceDim: '#050906',
+  surfaceContainerLowest: '#030604',
+  surfaceContainerLow: '#0f1410',
+  surfaceContainer: '#131914',
+  surfaceContainerHigh: '#1c221d',
+  surfaceContainerHighest: '#272d28',
+  surfaceBright: '#313732',
+  surfaceVariant: '#272d28',
 
-  primary: '#81db6e',
-  primaryContainer: '#006600',
-  primaryFixed: '#9cf987',
-  primaryFixedDim: '#81db6e',
-  onPrimary: '#003a00',
-  onPrimaryContainer: '#88e274',
-  onPrimaryFixed: '#002200',
+  // Light: the gold of the armillary sphere. Primary accent and the tutor's voice.
+  primary: '#f1aa4f',
+  primaryContainer: '#683c00',
+  primaryFixed: '#ffc573',
+  primaryFixedDim: '#f1aa4f',
+  onPrimary: '#281601',
+  onPrimaryContainer: '#ffd69a',
+  onPrimaryFixed: '#1d0e00',
 
-  secondary: '#abd19d',
-  secondaryContainer: '#33532b',
-  onSecondary: '#183712',
-  onSecondaryContainer: '#a0c693',
+  // Muted sage, lifted out of the ground. Borders and quiet icons.
+  secondary: '#91ad96',
+  secondaryContainer: '#243928',
+  onSecondary: '#07150a',
+  onSecondaryContainer: '#c6dfca',
 
-  tertiary: '#ffb3ac',
-  tertiaryContainer: '#b10315',
-  onTertiary: '#680008',
-  onTertiaryContainer: '#ffbdb6',
+  // Clay: "needs attention" (correction counts, low accuracy). Never alarm red.
+  tertiary: '#e78b7c',
+  tertiaryContainer: '#782a24',
+  onTertiary: '#2c0805',
+  onTertiaryContainer: '#ffd0c5',
 
-  error: '#ffb4ab',
-  errorContainer: '#93000a',
-  onError: '#690005',
-  onErrorContainer: '#ffdad6',
+  error: '#ef7f74',
+  errorContainer: '#7c1213',
+  onError: '#290605',
+  onErrorContainer: '#ffd7d1',
 
-  onBackground: '#e3e3df',
-  onSurface: '#e3e3df',
-  onSurfaceVariant: '#bfcab7',
-  outline: '#899483',
-  outlineVariant: '#404a3b',
+  onBackground: '#ecebe6',
+  onSurface: '#ecebe6',
+  onSurfaceVariant: '#a5a59e',
+  outline: '#777c75',
+  outlineVariant: '#323732',
 
-  inverseSurface: '#e3e3df',
-  inverseOnSurface: '#2f312e',
-  inversePrimary: '#106e09',
+  inverseSurface: '#ecebe6',
+  inverseOnSurface: '#1e231f',
+  inversePrimary: '#854f00',
+
+  /**
+   * The flag proper, used only where it means something. Lifted slightly off the
+   * official green so it still reads against the near-black ground. Note the two
+   * halves share a luminance and separate by hue alone, so the flag must never be
+   * the only thing carrying a meaning.
+   */
+  flagGreen: '#0b7a43',
+  flagRed: '#d5342f',
+  /** The learner's own voice: a cool counterpoint to the tutor's gold. */
+  userVoice: '#6fcee4',
 } as const;
 
 export const Typography = {

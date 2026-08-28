@@ -26,8 +26,8 @@ import type { SessionConfig } from '../../src/features/session/types';
 import type { UserPreferences } from '../../src/services/preferences';
 
 const WAVEFORM_COUNT = 11;
-const WARM_GREEN = '#046A38';
-const WARM_RED = '#D53244';
+const WARM_GREEN = Colors.flagGreen;
+const WARM_RED = Colors.flagRed;
 
 function WaveformBar({ delay, active }: { delay: number; active: boolean }) {
   const anim = useRef(new Animated.Value(10)).current;
@@ -212,7 +212,7 @@ export default function SessionScreen() {
           {isUserSpeaking ? (
             <View style={styles.tutorInfo}>
               <View style={[styles.tutorAvatar, styles.userSpeakingAvatar]}>
-                <MaterialCommunityIcons name="microphone" size={36} color={Colors.tertiary} />
+                <MaterialCommunityIcons name="microphone" size={36} color={Colors.userVoice} />
               </View>
               <Text style={[styles.speakerLabel, styles.userSpeakingLabel]}>A FALAR</Text>
               <Text style={styles.tutorName}>Você</Text>
@@ -239,17 +239,20 @@ export default function SessionScreen() {
               entry.speaker === 'tutor' ? (
                 <View key={entry.id} style={styles.tutorBubbleWrap}>
                   <View style={styles.tutorBubbleHeader}>
-                    <View style={styles.ptFlag}>
-                      <View style={[styles.flagStripe, { backgroundColor: '#006600' }]} />
-                      <View style={[styles.flagStripe, { backgroundColor: '#fff' }]} />
-                      <View style={[styles.flagStripe, { backgroundColor: '#FF0000' }]} />
+                    <View
+                      style={styles.ptFlag}
+                      accessibilityRole="image"
+                      accessibilityLabel="Português de Portugal"
+                    >
+                      <View style={styles.flagGreen} />
+                      <View style={styles.flagRed} />
                     </View>
                     <Text style={styles.bubbleSpeakerLabel}>TUTOR</Text>
                   </View>
                   {prefs.autoCorrections && entry.correction != null && (
-                    <View style={styles.correctionCallout}>
-                      <MaterialCommunityIcons name="auto-fix" size={14} color={Colors.tertiary} />
-                      <Text style={styles.correctionCalloutText}>{entry.correction}</Text>
+                    <View style={styles.correctionNote}>
+                      <Text style={styles.correctionNoteLabel}>CORREÇÃO</Text>
+                      <Text style={styles.correctionNoteText}>{entry.correction}</Text>
                     </View>
                   )}
                   <View style={styles.tutorBubble}>
@@ -486,9 +489,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // The two voices each own a colour, so whoever has the floor reads
+  // peripherally while the user is speaking and not looking at the screen.
   userSpeakingAvatar: {
-    backgroundColor: Colors.tertiaryContainer,
-    borderColor: Colors.tertiary + '66',
+    backgroundColor: Colors.userVoice + '1F',
+    borderColor: Colors.userVoice + '66',
   },
   speakerLabel: {
     fontFamily: Typography.label,
@@ -498,7 +503,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   userSpeakingLabel: {
-    color: Colors.tertiary + 'B3',
+    color: Colors.userVoice + 'B3',
   },
   tutorName: {
     fontFamily: Typography.headlineBold,
@@ -515,14 +520,17 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 6,
   },
+  // Portugal is green and red in a 2:3 split. No white stripe (that is Italy),
+  // and no coat of arms, which would be mud at this size.
   ptFlag: {
     flexDirection: 'row',
-    width: 16,
-    height: 12,
+    width: 15,
+    height: 10,
     borderRadius: 2,
     overflow: 'hidden',
   },
-  flagStripe: { flex: 1, height: '100%' },
+  flagGreen: { flex: 2, height: '100%', backgroundColor: Colors.flagGreen },
+  flagRed: { flex: 3, height: '100%', backgroundColor: Colors.flagRed },
   bubbleSpeakerLabel: {
     fontFamily: Typography.label,
     fontSize: 10,
@@ -537,12 +545,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius.md,
     borderBottomRightRadius: BorderRadius.md,
     borderBottomLeftRadius: BorderRadius.md,
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.primary + '99',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary + '2E',
   },
   bubbleText: {
     fontFamily: Typography.body,
@@ -562,7 +566,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   userBubble: {
-    backgroundColor: Colors.primaryContainer,
+    backgroundColor: Colors.userVoice + '1F',
+    borderWidth: 1,
+    borderColor: Colors.userVoice + '3D',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopLeftRadius: BorderRadius.md,
@@ -572,29 +578,30 @@ const styles = StyleSheet.create({
   userBubbleText: {
     fontFamily: Typography.body,
     fontSize: 15,
-    color: Colors.onPrimaryContainer,
+    color: Colors.onSurface,
     lineHeight: 22,
   },
-  correctionCallout: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: Colors.tertiaryContainer + 'CC',
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.tertiary,
-    borderTopRightRadius: BorderRadius.sm,
-    borderBottomRightRadius: BorderRadius.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 6,
+  // A margin note, not an alert. Speaking a language you don't master is
+  // exposing enough without the app boxing your mistake in a coloured panel.
+  correctionNote: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.outlineVariant,
+    paddingTop: 8,
+    marginBottom: 8,
   },
-  correctionCalloutText: {
-    fontFamily: Typography.label,
-    fontSize: 12,
-    color: Colors.tertiary,
+  correctionNoteLabel: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 9,
+    color: Colors.primary,
+    letterSpacing: 2,
+    marginBottom: 3,
+  },
+  correctionNoteText: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.onSurfaceVariant,
     fontStyle: 'italic',
-    flex: 1,
-    lineHeight: 18,
+    lineHeight: 19,
   },
 
   // Keyboard input panel

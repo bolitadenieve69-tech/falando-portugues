@@ -12,8 +12,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BorderRadius, Colors, Spacing, Typography } from '../../../constants/theme';
 import type { UserLevel } from '../../session/types';
 
-const WARM_RED = '#D53244';
-const WARM_GREEN = '#046A38';
+const WARM_RED = Colors.flagRed;
+const WARM_GREEN = Colors.flagGreen;
 
 type Answer = 0 | 1 | 2 | 3;
 

@@ -21,8 +21,8 @@ import { clearHistory } from '../../src/services/history';
 import { clearAuthData } from '../../src/features/auth/services/authService';
 import { LevelAssessmentCard } from '../../src/features/settings/components/LevelAssessmentCard';
 
-const WARM_GREEN = '#046A38';
-const WARM_RED = '#D53244';
+const WARM_GREEN = Colors.flagGreen;
+const WARM_RED = Colors.flagRed;
 const BUILDER_LOGO = require('../../assets/ag-ai-agency-logo.png');
 
 const LEVELS: { key: UserLevel; label: string; desc: string }[] = [

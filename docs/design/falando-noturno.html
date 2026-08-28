@@ -8,19 +8,24 @@
     --page-rule: oklch(0.88 0.008 70);
     --page-panel: oklch(0.99 0.004 70);
 
-    /* App palette: warm nocturnal. Never #000, never #fff. */
-    --ground: oklch(0.145 0.012 55);
-    --lift: oklch(0.195 0.014 55);
-    --lift-2: oklch(0.245 0.014 55);
-    --ink: oklch(0.94 0.008 70);
-    --ink-dim: oklch(0.70 0.012 65);
-    --ink-faint: oklch(0.55 0.012 65);
-    --hairline: oklch(0.31 0.012 60);
+    /* App palette. The ground is the flag's green taken almost to black;
+       the light on it is the armillary sphere's gold. Never #000, never #fff. */
+    --ground: oklch(0.148 0.011 152);
+    --lift: oklch(0.198 0.013 152);
+    --lift-2: oklch(0.248 0.013 152);
+    --ink: oklch(0.94 0.007 95);
+    --ink-dim: oklch(0.70 0.011 100);
+    --ink-faint: oklch(0.55 0.011 110);
+    --hairline: oklch(0.31 0.012 145);
 
-    --tutor: oklch(0.78 0.132 62);
-    --tutor-deep: oklch(0.52 0.115 52);
+    --tutor: oklch(0.79 0.135 70);
+    --tutor-deep: oklch(0.52 0.115 58);
     --you: oklch(0.80 0.095 215);
     --you-deep: oklch(0.52 0.085 220);
+
+    /* Flag proper, used only where it means something. */
+    --flag-green: oklch(0.47 0.105 150);
+    --flag-red: oklch(0.55 0.196 27);
 
     --voice: var(--tutor);
     --voice-deep: var(--tutor-deep);
@@ -180,6 +185,16 @@
     padding: 6px 26px 0;
   }
   .who { display: flex; align-items: baseline; gap: 9px; }
+  /* Portugal: green 2 / red 3, no white. The coat of arms would be mud at this size. */
+  .flag {
+    width: 15px; height: 10px;
+    border-radius: 1.5px;
+    background: linear-gradient(to right,
+      var(--flag-green) 0 40%, var(--flag-red) 40% 100%);
+    align-self: center;
+    flex: none;
+    box-shadow: 0 0 0 1px oklch(0.94 0.007 95 / 0.10);
+  }
   .who .name {
     font-family: ui-serif, Georgia, serif;
     font-size: 17px;
@@ -378,12 +393,12 @@
   .ctl:active { transform: scale(0.94); }
   .ctl:focus-visible { outline: 2px solid var(--voice); outline-offset: 3px; }
   .ctl.end {
-    background: color-mix(in oklch, oklch(0.55 0.17 25) 88%, var(--ground));
+    background: var(--flag-red);
     border-color: transparent;
     color: oklch(0.97 0.01 30);
     width: 62px; height: 62px;
   }
-  .ctl.end:hover { background: oklch(0.60 0.18 25); }
+  .ctl.end:hover { background: oklch(0.60 0.20 27); }
   .ctl svg { width: 21px; height: 21px; display: block; }
   .ctl.end svg { width: 24px; height: 24px; }
 
@@ -599,6 +614,7 @@
           <div class="view" data-view="sess" data-active="true">
             <div class="s-top">
               <span class="who">
+                <span class="flag" role="img" aria-label="Português de Portugal"></span>
                 <span class="name">Patrício</span>
                 <span class="lvl">B1</span>
               </span>
@@ -743,6 +759,34 @@
       </section>
 
       <section>
+        <h2>La bandera, sin ondearla</h2>
+        <p>La referencia está repartida, no pegada como una pegatina. El fondo es el
+           <strong>verde de la bandera llevado casi al negro</strong>: lo notas sin poder
+           nombrarlo. La luz que cae encima es el <strong>oro de la esfera armilar</strong>,
+           que además es la voz del tutor. Y el <strong>rojo</strong> queda reservado para lo
+           único que corta la conversación: colgar.</p>
+        <p>El único sitio donde aparece literal es una marca de 15 píxeles junto al nombre del
+           tutor, en la proporción real, 2 de verde y 3 de rojo. Sin escudo, que a ese tamaño
+           sería un borrón.</p>
+        <div class="swatches">
+          <span class="sw"><i style="background:oklch(0.148 0.011 152)"></i> Verde al fondo</span>
+          <span class="sw"><i style="background:oklch(0.79 0.135 70)"></i> Oro armilar</span>
+          <span class="sw"><i style="background:oklch(0.55 0.196 27)"></i> Rojo, solo para colgar</span>
+        </div>
+      </section>
+
+      <section>
+        <h2>Y de paso: hoy enseñas la bandera de Italia</h2>
+        <p>Buscando cómo estaba resuelto encontré esto en
+           <span class="kbd">app/session/[id].tsx</span>: tres franjas iguales verde,
+           <strong>blanca</strong> y roja. Eso es Italia. La de Portugal no lleva blanco, va
+           en proporción 2:3 y con la esfera armilar sobre la línea.</p>
+        <p>En una app cuya identidad entera es portugués de Portugal y nunca de Brasil, es de
+           las cosas que un tester nota enseguida. Se arregla en un minuto, con o sin este
+           rediseño.</p>
+      </section>
+
+      <section>
         <h2>La corrección no te riñe</h2>
         <p>Hoy la corrección sale en un recuadro de color, que es el lenguaje visual de un
            error. Aquí baja de tono: una línea fina, una etiqueta pequeña y cursiva de libro.
@@ -766,12 +810,13 @@
       </section>
 
       <section>
-        <h2>Por qué no es verde</h2>
-        <p>App de idiomas lleva a verde, mascota y confeti. Tu tema actual es
+        <h2>Verde sí, pero debajo</h2>
+        <p>App de idiomas lleva a verde brillante, mascota y confeti. Tu tema actual es
            <span class="kbd">#81db6e</span>, justo ese reflejo. El segundo reflejo, huir a un
-           minimalismo suizo en crema y negro, tampoco dice nada de este producto. El punto de
-           partida fue otro: alguien solo en su salón a las diez de la noche, hablando en voz
-           alta. Eso pide luz de lámpara, no un aula.</p>
+           minimalismo suizo en crema y negro, tampoco dice nada de este producto.</p>
+        <p>Aquí el verde está, pero como suelo y no como acento: bajado casi a negro, sosteniendo
+           la escena en vez de gritar. El punto de partida fue alguien solo en su salón a las diez
+           de la noche, hablando en voz alta. Eso pide luz de lámpara, no un aula.</p>
       </section>
     </div>
   </div>

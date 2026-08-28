@@ -15,7 +15,7 @@ import { loadSessions, mergeRemoteSessions, computeStats } from '../../src/servi
 import { fetchSessionsRemote } from '../../src/services/api';
 import type { SessionRecord, TopicStat } from '../../src/services/history';
 
-const WARM_GREEN = '#046A38';
+const WARM_GREEN = Colors.flagGreen;
 
 const TOPIC_ICONS: Record<string, React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   viagens: 'airplane',
@@ -114,7 +114,7 @@ export default function HistoryScreen() {
         scrollEventThrottle={16}
       >
         <LinearGradient
-          colors={[WARM_GREEN, '#4D5934', '#D53244']}
+          colors={[WARM_GREEN, '#4D5934', Colors.flagRed]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.progressHero}

@@ -20,8 +20,8 @@ import type { SessionRecord } from '../../src/services/history';
 import { LevelAssessmentCard } from '../../src/features/settings/components/LevelAssessmentCard';
 
 const LEVELS: UserLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-const PORTUGAL_GREEN = '#046A38';
-const PORTUGAL_RED = '#D53244';
+const PORTUGAL_GREEN = Colors.flagGreen;
+const PORTUGAL_RED = Colors.flagRed;
 
 interface TopicItem {
   key: ConversationTopic;
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.onSurface + '88',
   },
-  levelChipTextActive: { color: '#002200' },
+  levelChipTextActive: { color: Colors.onPrimary },
 
   topicsGrid: {
     flexDirection: 'row',

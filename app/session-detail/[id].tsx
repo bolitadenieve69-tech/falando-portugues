@@ -14,8 +14,8 @@ import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/t
 import { loadSessions } from '../../src/services/history';
 import type { SessionRecord } from '../../src/services/history';
 
-const WARM_GREEN = '#046A38';
-const WARM_RED = '#D53244';
+const WARM_GREEN = Colors.flagGreen;
+const WARM_RED = Colors.flagRed;
 
 const TOPIC_ICONS: Record<string, React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   viagens: 'airplane',
