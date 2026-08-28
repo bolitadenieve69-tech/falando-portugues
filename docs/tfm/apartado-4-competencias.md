@@ -50,6 +50,12 @@ verificación de contraste según WCAG y maquetación de las pantallas.
 capacidades y límites de los modelos generativos, y criterio para seleccionar la herramienta
 adecuada a cada parte del problema en lugar de aplicar una sola a todo.
 
+**Aula Triple A.** Los fundamentos de análisis de mercado se aplicaron al estudio de
+viabilidad del producto: análisis de la competencia directa en apps de conversación con IA,
+delimitación del nicho (portugués europeo frente al brasileño, que es el que ofrecen por
+defecto las alternativas), definición del perfil de usuario objetivo y contraste entre el
+precio de mercado y el coste marginal por sesión calculado.
+
 **Aula Freelance.** Enfoque de entrega profesional: delimitación del alcance por fases,
 documentación de traspaso para que otra persona pueda continuar el trabajo, y valoración
 económica de la solución.
