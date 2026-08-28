@@ -50,6 +50,9 @@ class LLMFullResponseEndFrame(_BaseFrame): pass
 class LLMMessagesAppendFrame(_BaseFrame): pass
 class LLMRunFrame(_BaseFrame): pass
 class UserStoppedSpeakingFrame(_BaseFrame): pass
+class TTSAudioRawFrame(_BaseFrame):
+    def __init__(self, audio: bytes = b""):
+        self.audio = audio
 
 frames_mod = _make_module(
     "pipecat.frames.frames",
@@ -62,6 +65,7 @@ frames_mod = _make_module(
     LLMMessagesAppendFrame=LLMMessagesAppendFrame,
     LLMRunFrame=LLMRunFrame,
     UserStoppedSpeakingFrame=UserStoppedSpeakingFrame,
+    TTSAudioRawFrame=TTSAudioRawFrame,
 )
 
 # ── Pipecat processor stubs ───────────────────────────────────────────────────

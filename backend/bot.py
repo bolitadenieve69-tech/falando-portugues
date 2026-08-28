@@ -37,6 +37,7 @@ from pipecat.transports.livekit.transport import LiveKitParams, LiveKitTransport
 
 from languages import DEFAULT_LANGUAGE, get_language
 from utils.corrections import parse_correction
+from utils.latency import LatencyProbe
 
 # Hard cap on session length so an abandoned session cannot keep consuming
 # Deepgram/Anthropic/ElevenLabs indefinitely.
@@ -239,6 +240,7 @@ async def _run_pipeline(
     context_aggregator = LLMContextAggregatorPair(context)
     user_pub = TranscriptPublisher("user")
     tutor_pub = TranscriptPublisher("tutor")
+    latency = LatencyProbe(room_name=room_name, language=profile.code, level=level)
 
     # WebSocket TTS streams audio chunks as they are generated, so playback
     # starts before the full reply is synthesized (vs. waiting for the whole
@@ -257,6 +259,7 @@ async def _run_pipeline(
         llm,
         tutor_pub,
         tts,
+        latency,
         transport.output(),
         context_aggregator.assistant(),
     ])
