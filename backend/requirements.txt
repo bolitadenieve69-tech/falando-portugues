@@ -1,5 +1,10 @@
-pipecat-ai[livekit,openai,deepgram,elevenlabs]>=0.0.45
-anthropic>=0.25.0
+# Pinned deliberately. These two versions must match: pipecat passes a
+# `temperature` argument that the anthropic SDK removed in 1.x, so an unpinned
+# rebuild installs pipecat 1.8.1 + anthropic 1.2.0 and every tutor reply fails
+# with "AsyncMessages.create() got an unexpected keyword argument 'temperature'".
+# Verified working pair, matching the local environment:
+pipecat-ai[livekit,openai,deepgram,elevenlabs]==1.1.0
+anthropic==0.100.0
 livekit-api>=0.6.0
 python-dotenv>=1.0.0
 fastapi>=0.111.0
