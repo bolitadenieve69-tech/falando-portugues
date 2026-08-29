@@ -99,7 +99,10 @@ export default function HomeScreen() {
   }
 
   const initial = username ? username[0].toUpperCase() : '?';
-  const featuredTopics = TOPICS.filter((topic) => ['viagens', 'comida', 'cultura'].includes(topic.key));
+  // Cidadania is featured on purpose: preparing Portugal's citizenship test is
+  // the need this app serves that the general-purpose language apps do not.
+  const featuredTopics = TOPICS.filter((topic) =>
+    ['cidadania', 'viagens', 'comida'].includes(topic.key));
   const lastExcerpt = lastSession?.excerpt ?? 'Olá! Bem-vindo, tudo bem contigo?';
 
   return (
