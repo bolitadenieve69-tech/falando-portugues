@@ -205,6 +205,13 @@ export default function HomeScreen() {
               );
             })}
           </View>
+
+          {selectedTopic === 'cidadania' && (
+            <Text style={styles.topicDisclaimer}>
+              Serve para praticares português sobre estes temas. Não é material de
+              estudo: confirma sempre datas e requisitos numa fonte oficial.
+            </Text>
+          )}
         </View>
 
         {/* Topics */}
@@ -384,6 +391,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.onSurfaceVariant,
     marginTop: 4,
+  },
+  topicDisclaimer: {
+    fontFamily: Typography.label,
+    fontSize: 11,
+    lineHeight: 16,
+    color: Colors.onSurfaceVariant,
+    marginTop: Spacing.sm,
+    paddingHorizontal: 2,
   },
   featuredTopicsRow: {
     flexDirection: 'row',

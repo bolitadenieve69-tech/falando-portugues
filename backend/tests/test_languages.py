@@ -102,6 +102,21 @@ class TestCitizenshipTopic:
         assert "nunca inventes" in prompt
         assert "fonte oficial" in prompt
 
+    def test_prompt_covers_facts_that_go_stale(self):
+        """A probe found the tutor naming a president who had left office, stated
+        with the same confidence as the facts it got right. Refusing to invent is
+        not enough: the model does not know its training data has aged."""
+        prompt = get_language("pt-PT").build_system_prompt("B1", "cidadania").lower()
+        assert "cargo" in prompt and "eleições" in prompt
+        assert "desatualizado" in prompt
+
+    def test_prompt_prescribes_an_answer_rather_than_silence(self):
+        """Prohibitions alone made the model return an empty reply, which in a
+        voice session is silence. It needs a sentence to say instead."""
+        prompt = get_language("pt-PT").build_system_prompt("B1", "cidadania").lower()
+        assert "nunca com silêncio" in prompt
+        assert "confirma" in prompt
+
     def test_brief_only_applies_to_its_own_topic(self):
         prompt = get_language("pt-PT").build_system_prompt("B1", "comida")
         assert "cidadania" not in prompt.lower()
