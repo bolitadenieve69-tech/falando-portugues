@@ -38,6 +38,25 @@ _TOPIC_LABELS = {
     "comida": "Gastronomia e culinária portuguesa",
     "cultura": "Cultura, história e tradições de Portugal",
     "livre": "Conversa livre — qualquer tema",
+    "cidadania": "Cidadania portuguesa: história, cultura e símbolos",
+}
+
+# The 2026 nationality law requires proof of knowledge of Portuguese history,
+# culture, national symbols, political organisation, and the rights and duties of
+# citizenship, tested by the TNIC. The detailed syllabus has not been published
+# yet, so this brief follows the five domains the law itself names and nothing
+# more. The instruction not to invent dates or legal articles matters here: a
+# confident wrong answer could mislead someone preparing for a real exam.
+_TOPIC_BRIEFS = {
+    "cidadania": (
+        "Conversa orientada para quem prepara a prova de cidadania portuguesa. "
+        "Ao longo da conversa, aborda os cinco domínios previstos na lei: "
+        "história de Portugal, cultura e tradições, símbolos nacionais, "
+        "organização política do Estado, e direitos e deveres dos cidadãos. "
+        "Faz perguntas simples sobre estes temas e corrige tanto a língua como os "
+        "factos. NUNCA inventes datas, artigos de lei ou requisitos: se não tiveres "
+        "a certeza, diz que não sabes e sugere confirmar em fonte oficial."
+    ),
 }
 
 _VOICES = (
@@ -53,6 +72,7 @@ PT_PT = LanguageProfile(
     system_prompt_template=_SYSTEM_PROMPT,
     level_instructions=_LEVEL_INSTRUCTIONS,
     topic_labels=_TOPIC_LABELS,
+    topic_briefs=_TOPIC_BRIEFS,
     voices=_VOICES,
     default_voice_id="DMcOknq8n1B6XshFIJKJ",
 )

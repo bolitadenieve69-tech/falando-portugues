@@ -30,6 +30,9 @@ class LanguageProfile:
     system_prompt_template: str  # uses {level}, {level_instructions}, {topic}
     level_instructions: dict[str, str]
     topic_labels: dict[str, str]
+    # Optional, longer guidance appended to the prompt for topics that need
+    # more than a label. Keeps topic_labels short enough for the UI.
+    topic_briefs: dict[str, str] = field(default_factory=dict)
     voices: tuple[Voice, ...] = field(default_factory=tuple)
     default_voice_id: str = ""
 
@@ -54,6 +57,9 @@ class LanguageProfile:
             level, self.level_instructions[DEFAULT_LEVEL]
         )
         topic_label = self.topic_labels.get(topic, self.topic_labels[DEFAULT_TOPIC])
+        brief = self.topic_briefs.get(topic)
+        if brief:
+            topic_label = f"{topic_label}\n{brief}"
         return self.system_prompt_template.format(
             level=level,
             topic=topic_label,

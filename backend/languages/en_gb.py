@@ -45,6 +45,7 @@ _TOPIC_LABELS = {
     "comida": "Food and cooking",
     "cultura": "Culture, history and traditions",
     "livre": "Free conversation — any topic",
+    "cidadania": "Citizenship: history, culture and national symbols",
 }
 
 # TODO: add real English ElevenLabs voice IDs before enabling this language.

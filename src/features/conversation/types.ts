@@ -24,4 +24,5 @@ export type ConversationTopic =
   | 'familia'
   | 'comida'
   | 'cultura'
-  | 'livre';
+  | 'livre'
+  | 'cidadania';

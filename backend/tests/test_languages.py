@@ -82,3 +82,30 @@ class TestVoices:
     def test_default_voice_is_valid(self):
         profile = get_language("pt-PT")
         assert profile.default_voice_id in profile.valid_voice_ids()
+
+
+class TestCitizenshipTopic:
+    """Portugal's 2026 nationality law adds a civic-knowledge requirement (TNIC)."""
+
+    def test_present_in_every_language(self):
+        for code in _ALL_CODES:
+            assert "cidadania" in get_language(code).topic_labels, code
+
+    def test_portuguese_prompt_names_the_five_legal_domains(self):
+        prompt = get_language("pt-PT").build_system_prompt("B1", "cidadania")
+        for domain in ["história", "cultura", "símbolos", "organização política", "direitos e deveres"]:
+            assert domain in prompt.lower(), domain
+
+    def test_portuguese_prompt_forbids_inventing_facts(self):
+        # Someone preparing a real exam must not be fed confident wrong answers.
+        prompt = get_language("pt-PT").build_system_prompt("B1", "cidadania").lower()
+        assert "nunca inventes" in prompt
+        assert "fonte oficial" in prompt
+
+    def test_brief_only_applies_to_its_own_topic(self):
+        prompt = get_language("pt-PT").build_system_prompt("B1", "comida")
+        assert "cidadania" not in prompt.lower()
+
+    def test_label_stays_short_enough_for_the_interface(self):
+        for code in _ALL_CODES:
+            assert len(get_language(code).topic_labels["cidadania"]) < 60, code

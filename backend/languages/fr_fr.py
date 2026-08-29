@@ -43,6 +43,7 @@ _TOPIC_LABELS = {
     "comida": "Gastronomie et cuisine française",
     "cultura": "Culture, histoire et traditions de France",
     "livre": "Conversation libre — n'importe quel sujet",
+    "cidadania": "Citoyenneté française : histoire, culture et symboles",
 }
 
 # TODO: add real France-French ElevenLabs voice IDs before enabling this language.

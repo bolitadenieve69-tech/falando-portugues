@@ -43,6 +43,7 @@ _TOPIC_LABELS = {
     "comida": "Gastronomia e cucina italiana",
     "cultura": "Cultura, storia e tradizioni d'Italia",
     "livre": "Conversazione libera — qualsiasi argomento",
+    "cidadania": "Cittadinanza italiana: storia, cultura e simboli",
 }
 
 # TODO: add real Italian ElevenLabs voice IDs before enabling this language.

@@ -37,6 +37,9 @@ const TOPICS: TopicItem[] = [
   { key: 'comida',   label: 'Comida',   icon: 'food-fork-drink',   accent: '#E74C3C' },
   { key: 'cultura',  label: 'Cultura',  icon: 'theater',           accent: '#F39C12' },
   { key: 'livre',    label: 'Livre',    icon: 'forum',             accent: Colors.primary },
+  // Aimed at people preparing Portugal's citizenship test (TNIC). The tutor
+  // covers the five domains the nationality law names; see backend/languages/pt_pt.py.
+  { key: 'cidadania', label: 'Cidadania', icon: 'bank',             accent: Colors.flagGreen },
 ];
 
 function greeting(): string {
