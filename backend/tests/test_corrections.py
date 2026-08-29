@@ -69,3 +69,55 @@ class TestParseCorrection:
         correction, text = parse_correction("(Correction: say X instead of Y.) Reply here.")
         assert correction == "say X instead of Y."
         assert text == "Reply here."
+
+
+class TestBareMarker:
+    """The model drops the parentheses in practice; these come from real sessions."""
+
+    def test_splits_at_the_sentence_end(self):
+        correction, text = parse_correction(
+            'Correção: diz-se "tenho uma tarefa" em vez do que escreveste. Ótimo objetivo, Angel!'
+        )
+        assert correction == 'diz-se "tenho uma tarefa" em vez do que escreveste.'
+        assert text == "Ótimo objetivo, Angel!"
+
+    def test_question_mark_inside_quotes_is_not_the_end(self):
+        correction, text = parse_correction(
+            'Correção: diz-se "Podes repetir?" em vez de "No Vivem, podes repetir?". '
+            "Claro, repito o que precisares!"
+        )
+        assert correction.endswith('podes repetir?".')
+        assert text == "Claro, repito o que precisares!"
+
+    def test_correction_only_leaves_no_reply(self):
+        correction, text = parse_correction("Correção: diz-se obrigado.")
+        assert correction == "diz-se obrigado."
+        assert text == ""
+
+    def test_several_quoted_pairs(self):
+        correction, text = parse_correction(
+            'Correção: diz-se "quando estudo" em vez de "na hora de estudar", '
+            '"semelhança" em vez de "similitude". Entendo perfeitamente!'
+        )
+        assert text == "Entendo perfeitamente!"
+        assert "similitude" in correction
+
+    def test_marker_mid_sentence_is_not_a_correction(self):
+        correction, text = parse_correction("Fiz uma correção: estava errado.")
+        assert correction is None
+        assert text == "Fiz uma correção: estava errado."
+
+    def test_other_languages_without_parentheses(self):
+        for raw, tail in [
+            ("Correction: on dit X au lieu de Y. Réponse ici.", "Réponse ici."),
+            ("Correzione: si dice X invece di Y. Risposta qui.", "Risposta qui."),
+            ("Correction: say X instead of Y. Reply here.", "Reply here."),
+        ]:
+            correction, text = parse_correction(raw)
+            assert correction is not None, raw
+            assert text == tail
+
+    def test_parenthesised_form_still_wins(self):
+        correction, text = parse_correction("(Correção: diz-se X.) Resposta.")
+        assert correction == "diz-se X."
+        assert text == "Resposta."
