@@ -4,12 +4,18 @@ Measures what the learner actually feels: the gap between finishing their
 sentence and hearing the tutor start to answer, broken down by stage so a slow
 turn can be attributed to STT, the LLM, or TTS.
 
-The stage boundaries mirror the budget declared in CONTEXT.md:
+Measured against the budget declared in CONTEXT.md:
 
-    end of speech -> final transcript      target <= 1000 ms
-    transcript    -> first LLM token       target <=  500 ms
-    first token   -> first audio out       target <=  800 ms
-    end of speech -> first audio out       target <= 2500 ms
+    transcript  -> first LLM token       target <=  500 ms
+    first token -> first audio out       target <=  800 ms
+    end of speech -> first audio out     target <= 2500 ms  (what the user feels)
+
+**On the missing STT stage.** The budget frames speech-to-text as "end of speech
+-> transcript", but the pipeline shows the opposite order: Deepgram finalises the
+transcript roughly 350ms *before* the voice activity detector reports the user
+stopped. Speech-to-text is therefore not a wait the learner experiences, and the
+interval cannot be measured as the budget words it. What is recorded instead is
+asr_lead_ms, how far ahead of the end-of-speech signal the transcript arrived.
 
 **Why two probes.** No single point in the pipeline sees every frame: the user
 context aggregator consumes TranscriptionFrames, so a probe placed after it
@@ -78,6 +84,11 @@ class TurnTimings:
         self.seen_first_token = False
         self.seen_first_audio = False
 
+    def begin_if_idle(self) -> None:
+        """Open a new turn on the first mark that arrives after a reset."""
+        if not self.marks:
+            self.turn += 1
+
     def mark(self, name: str, first_only: bool = True) -> None:
         if first_only and name in self.marks:
             return
@@ -89,8 +100,8 @@ class TurnTimings:
 
     def record(self, complete: bool) -> dict | None:
         """Build the record for this turn, or None if it was not a spoken turn."""
-        if "speech_end" not in self.marks:
-            return None  # typed input or a stray frame
+        if "speech_end" not in self.marks and "transcript" not in self.marks:
+            return None  # not a spoken turn
         return {
             "ts": round(self.marks["speech_end"]),
             "room": self.room,
@@ -98,7 +109,8 @@ class TurnTimings:
             "level": self.level,
             "turn": self.turn,
             "complete": complete,
-            "stt_ms": self.stage("speech_end", "transcript"),
+            # Positive: the transcript was ready before end-of-speech fired.
+            "asr_lead_ms": self.stage("transcript", "speech_end"),
             "llm_ms": self.stage("transcript", "first_token"),
             "tts_ms": self.stage("first_token", "first_audio"),
             "total_ms": self.stage("speech_end", "first_audio"),
@@ -144,14 +156,23 @@ class LatencyProbe(IdentityFilter):
             loguru_logger.warning("[latency] probe error: {}", exc)
 
     def _observe_input(self, frame: Frame) -> None:
+        """Marks arrive out of the order the budget assumes.
+
+        The transcript lands before the end-of-speech signal, so neither can act
+        as the turn boundary: resetting on end-of-speech used to wipe a
+        transcript already recorded. A turn is therefore opened by whichever
+        arrives first and closed only when audio goes out.
+        """
         if isinstance(frame, UserStoppedSpeakingFrame):
-            # A new turn begins. Flush anything incomplete from the previous one.
-            self._emit(complete=False)
-            self._t.reset()
-            self._t.turn += 1
+            self._t.begin_if_idle()
             self._t.mark("speech_end")
         elif isinstance(frame, TranscriptionFrame):
             # Interim results arrive as a different frame type, so this is final.
+            if "transcript" in self._t.marks:
+                # The previous turn never produced audio. Keep what we saw.
+                self._emit(complete=False)
+                self._t.reset()
+            self._t.begin_if_idle()
             self._t.mark("transcript")
             self._t.transcript_chars = len(frame.text or "")
 
@@ -179,7 +200,7 @@ class LatencyProbe(IdentityFilter):
         write_record(record)
         if complete:
             loguru_logger.info(
-                "[latency] turn={} total={}ms (stt={} llm={} tts={})",
+                "[latency] turn={} total={}ms (asr_lead={} llm={} tts={})",
                 record["turn"], record["total_ms"],
-                record["stt_ms"], record["llm_ms"], record["tts_ms"],
+                record["asr_lead_ms"], record["llm_ms"], record["tts_ms"],
             )

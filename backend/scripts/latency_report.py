@@ -22,10 +22,16 @@ from pathlib import Path
 
 # Budget from CONTEXT.md, in milliseconds.
 BUDGET = {
-    "stt_ms": (1000, "Fin de habla -> transcripción final"),
     "llm_ms": (500, "Transcripción -> primer token del LLM"),
     "tts_ms": (800, "Primer token -> primer audio"),
     "total_ms": (2500, "Latencia percibida total"),
+}
+
+# No es una etapa del presupuesto sino un hallazgo: la transcripción está lista
+# antes de que el detector de voz declare el fin del habla, así que el
+# reconocimiento no es una espera que el usuario perciba.
+INFORMATIVE = {
+    "asr_lead_ms": "Ventaja de la transcripción sobre el fin de habla",
 }
 
 
@@ -103,6 +109,11 @@ def main() -> None:
         print(f"{s['label']:<38}{s['median']:>8.0f}ms{s['p90']:>8.0f}ms"
               f"{s['budget']:>9}ms{mark:>10}")
     print("-" * 78)
+
+    lead = [r["asr_lead_ms"] for r in rows if r.get("asr_lead_ms") is not None]
+    if lead:
+        print(f"\n{INFORMATIVE['asr_lead_ms']}: mediana {statistics.median(lead):.0f} ms")
+        print("(positivo = el reconocimiento de voz terminó antes; no es un cuello de botella)")
 
     total = summary.get("total_ms")
     if total:

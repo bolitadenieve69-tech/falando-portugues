@@ -31,9 +31,13 @@ def _records(p):
 
 
 async def _turn(pin, pout, said="ola", reply="Bom dia!"):
-    """One full spoken turn, each frame entering at the end that sees it."""
-    await pin.process_frame(UserStoppedSpeakingFrame(), DOWN)
+    """One full spoken turn.
+
+    The transcript is fed before end-of-speech because that is the order the real
+    pipeline produces: Deepgram finalises ahead of the voice activity detector.
+    """
     await pin.process_frame(TranscriptionFrame(text=said), DOWN)
+    await pin.process_frame(UserStoppedSpeakingFrame(), DOWN)
     await pout.process_frame(LLMFullResponseStartFrame(), DOWN)
     await pout.process_frame(TextFrame(text=reply), DOWN)
     await pout.process_frame(TTSAudioRawFrame(), DOWN)
@@ -52,16 +56,19 @@ class TestCompleteTurn:
         pin, pout = probes
         await _turn(pin, pout)
         r = _records(pin)[0]
-        for stage in ("stt_ms", "llm_ms", "tts_ms", "total_ms"):
+        for stage in ("llm_ms", "tts_ms", "total_ms"):
             assert r[stage] is not None, stage
             assert r[stage] >= 0
+        # Recorded even though it is not a budget stage: it documents that
+        # speech-to-text finishes before the turn is declared over.
+        assert r["asr_lead_ms"] is not None
 
     @pytest.mark.asyncio
     async def test_total_covers_the_stages(self, probes):
         pin, pout = probes
         await _turn(pin, pout)
         r = _records(pin)[0]
-        assert r["total_ms"] >= r["stt_ms"] + r["llm_ms"] + r["tts_ms"] - 1
+        assert r["total_ms"] >= r["llm_ms"] + r["tts_ms"] - 1
 
     @pytest.mark.asyncio
     async def test_counts_characters_from_both_ends(self, probes):
@@ -104,7 +111,7 @@ class TestTurnBoundaries:
         recs = _records(pin)
         assert recs[0]["complete"] is False
         assert recs[0]["total_ms"] is None
-        assert recs[0]["stt_ms"] is not None  # what we did capture is kept
+        assert recs[0]["transcript_chars"] == 3  # what we did capture is kept
         assert recs[1]["complete"] is True
 
 
