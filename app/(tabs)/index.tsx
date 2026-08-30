@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel, ConversationTopic } from '../../src/features/session/types';
 import { loadPreferences, savePreferences } from '../../src/services/preferences';
+import { voiceName } from '../../src/constants/voices';
 import { loadSessions, computeStats } from '../../src/services/history';
 import type { SessionRecord } from '../../src/services/history';
 import { LevelAssessmentCard } from '../../src/features/settings/components/LevelAssessmentCard';
@@ -52,6 +53,7 @@ function greeting(): string {
 export default function HomeScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const [tutorName, setTutorName] = useState('Tutor');
   const [selectedLevel, setSelectedLevel] = useState<UserLevel>('B1');
   const [selectedTopic, setSelectedTopic] = useState<ConversationTopic | null>(null);
   const [streakDays, setStreakDays] = useState(0);
@@ -62,7 +64,10 @@ export default function HomeScreen() {
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    loadPreferences().then((prefs) => setSelectedLevel(prefs.level));
+    loadPreferences().then((prefs) => {
+      setSelectedLevel(prefs.level);
+      setTutorName(voiceName(prefs.voiceId));
+    });
     loadSessions().then((sessions) => {
       const stats = computeStats(sessions);
       setStreakDays(stats.streakDays);
@@ -147,7 +152,7 @@ export default function HomeScreen() {
             <View style={styles.startTextWrap}>
               <Text style={styles.startTitle}>Começar agora</Text>
               <Text style={styles.startSubtitle} numberOfLines={2}>
-                Patrício · {selectedLevel} · {TOPICS.find((t) => t.key === selectedTopic)?.label ?? 'Livre'}
+                {tutorName} · {selectedLevel} · {TOPICS.find((t) => t.key === selectedTopic)?.label ?? 'Livre'}
               </Text>
             </View>
           </TouchableOpacity>

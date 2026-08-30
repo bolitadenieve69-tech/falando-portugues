@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel } from '../../src/features/session/types';
+import { TUTOR_VOICES } from '../../src/constants/voices';
 import { loadPreferences, savePreferences } from '../../src/services/preferences';
 import { clearHistory } from '../../src/services/history';
 import { clearAuthData } from '../../src/features/auth/services/authService';
@@ -34,19 +35,6 @@ const LEVELS: { key: UserLevel; label: string; desc: string }[] = [
   { key: 'C2', label: 'C2', desc: 'Mestria' },
 ];
 
-interface TutorVoice {
-  id: string;
-  name: string;
-  city: string;
-  style: string;
-  voiceId: string;
-}
-
-const TUTOR_VOICES: TutorVoice[] = [
-  { id: 'tiago', name: 'Tiago', city: 'Lisboa', style: 'Conversacional', voiceId: 'c0rzOw18hxEhaSybUod2' },
-  { id: 'joana', name: 'Joana', city: 'Lisboa', style: 'Natural & Clara', voiceId: 'nJ5NFqyKb8kn9JBPmo6i' },
-  { id: 'patricio', name: 'Patrício', city: 'Porto', style: 'Profunda & Calma', voiceId: 'DMcOknq8n1B6XshFIJKJ' },
-];
 
 export default function SettingsScreen() {
   const scrollRef = useRef<ScrollView>(null);

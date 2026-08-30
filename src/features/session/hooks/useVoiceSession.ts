@@ -3,6 +3,7 @@ import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
 import { createSession, fetchSessionStatus, saveSessionRemote } from '../../../services/api';
 import { captureError } from '../../../services/monitoring';
+import { DEFAULT_TUTOR_NAME, voiceName } from '../../../constants/voices';
 import { saveSession } from '../../../services/history';
 import { loadPreferences } from '../../../services/preferences';
 import type {
@@ -13,13 +14,6 @@ import type {
 } from '../types';
 import { parseTranscriptMessage } from '../utils/parseTranscriptMessage';
 
-/** Map known ElevenLabs voice IDs to display names. */
-const VOICE_NAMES: Record<string, string> = {
-  nJ5NFqyKb8kn9JBPmo6i: 'Joana',
-  DMcOknq8n1B6XshFIJKJ: 'Patrício',
-  c0rzOw18hxEhaSybUod2: 'Tiago',
-};
-const DEFAULT_TUTOR_NAME = 'Tutor';
 
 /**
  * Request microphone permission and configure the audio session.
@@ -182,7 +176,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
           voiceId: prefs.voiceId,
         });
         setSessionData(data);
-        setTutorName(VOICE_NAMES[prefs.voiceId] ?? DEFAULT_TUTOR_NAME);
+        setTutorName(voiceName(prefs.voiceId));
 
         // 3. Create LiveKit room.
         const room = new Room();
