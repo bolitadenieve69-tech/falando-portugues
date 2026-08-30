@@ -475,6 +475,16 @@ class TestEndpointing:
         from bot import endpointing_for
         assert endpointing_for("Z9") == endpointing_for("B1")
 
+    def test_utterance_end_sits_above_endpointing(self):
+        """It must be the later signal: raw silence decides first, word gaps last."""
+        from bot import endpointing_for, utterance_end_for
+        for level in ["A1", "B1", "C2"]:
+            assert utterance_end_for(level) > endpointing_for(level), level
+
+    def test_utterance_end_respects_the_provider_floor(self):
+        from bot import utterance_end_for
+        assert utterance_end_for("C2") >= 1000
+
     def test_environment_overrides_every_level(self, monkeypatch):
         import importlib, bot
         monkeypatch.setenv("DEEPGRAM_ENDPOINTING_MS", "3000")

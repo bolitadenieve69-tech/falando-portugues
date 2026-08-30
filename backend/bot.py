@@ -55,13 +55,27 @@ TTS_MODEL = os.environ.get("ELEVENLABS_TTS_MODEL", "eleven_multilingual_v2")
 # longer before answering, which is the better trade: being interrupted mid
 # sentence is worse than a slightly slower reply.
 _ENDPOINTING_BY_LEVEL = {
-    "A1": 2200, "A2": 2000, "B1": 1700, "B2": 1500, "C1": 1300, "C2": 1200,
+    "A1": 2500, "A2": 2300, "B1": 2000, "B2": 1800, "C1": 1500, "C2": 1300,
 }
 _ENDPOINTING_OVERRIDE = int(os.environ.get("DEEPGRAM_ENDPOINTING_MS", "0"))
 
+# Deepgram's floor for this parameter.
+_MIN_UTTERANCE_END_MS = 1000
+
 
 def endpointing_for(level: str) -> int:
-    return _ENDPOINTING_OVERRIDE or _ENDPOINTING_BY_LEVEL.get(level, 1700)
+    return _ENDPOINTING_OVERRIDE or _ENDPOINTING_BY_LEVEL.get(level, 2000)
+
+
+def utterance_end_for(level: str) -> int:
+    """A second, more forgiving check on whether the learner has finished.
+
+    endpointing measures raw silence, so a learner hunting for a word looks
+    identical to one who has finished. utterance_end_ms instead looks at the gaps
+    between words, which separates thinking from stopping. Held above the
+    endpointing value so it acts as the later, deciding signal.
+    """
+    return max(_MIN_UTTERANCE_END_MS, endpointing_for(level) + 800)
 
 
 class TranscriptPublisher(IdentityFilter):
@@ -231,6 +245,7 @@ async def _run_pipeline(
             language=profile.stt_language,
             model="nova-3-general",
             endpointing=endpointing_for(level),
+            utterance_end_ms=utterance_end_for(level),
             smart_format=True,
             interim_results=True,
             punctuate=True,
