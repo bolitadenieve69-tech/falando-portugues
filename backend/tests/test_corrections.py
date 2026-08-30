@@ -121,3 +121,31 @@ class TestBareMarker:
         correction, text = parse_correction("(Correção: diz-se X.) Resposta.")
         assert correction == "diz-se X."
         assert text == "Resposta."
+
+
+class TestSpanishSpelling:
+    """The tutor sometimes hispanicises its own marker word.
+
+    Observed live on 2026-08-30: the reply opened "Corrección: diz-se ..." and
+    the marker sailed past the parser straight into the speech synthesiser, so
+    the learner heard the word "Corrección" read out loud. The prompt asks for
+    Portuguese, but a prompt is a request and a parser is a guarantee.
+    """
+
+    def test_bare_spanish_marker(self):
+        correction, text = parse_correction(
+            'Corrección: diz-se "a explorar" em vez de "a aprovar". '
+            "Ótimo, fico feliz em ajudar!"
+        )
+        assert correction is not None
+        assert "explorar" in correction
+        assert text == "Ótimo, fico feliz em ajudar!"
+
+    def test_parenthesised_spanish_marker(self):
+        correction, text = parse_correction("(Corrección: diz-se X.) Resposta.")
+        assert correction == "diz-se X."
+        assert text == "Resposta."
+
+    def test_unaccented_spanish_marker(self):
+        correction, _ = parse_correction("Correccion: diz-se X. Resposta.")
+        assert correction == "diz-se X."

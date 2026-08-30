@@ -13,8 +13,11 @@ profiles in languages/ for the per-language prompt.
 
 import re
 
-# Language-neutral correction marker: corre(ção|cção|ction|zione).
-_MARKER = r"corre(?:[cç]{1,2}[ãa]o|ction|zione)"
+# Language-neutral correction marker: corre(ção|cção|ction|zione|cción).
+# Spanish is in the list even though no profile speaks it: a Portuguese tutor
+# talking to a Spanish speaker drifts into "Corrección", and an unrecognised
+# marker is not a silent failure — it gets read aloud.
+_MARKER = r"corre(?:[cç]{1,2}(?:[ãa]o|i[óo]n)|ction|zione)"
 
 # Preferred form. Lazy match, but the closing ')' must be followed by whitespace
 # or end of string, so parentheticals inside the correction (e.g. "(não Y)") do
