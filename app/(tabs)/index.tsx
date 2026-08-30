@@ -99,10 +99,6 @@ export default function HomeScreen() {
   }
 
   const initial = username ? username[0].toUpperCase() : '?';
-  // Cidadania is featured on purpose: preparing Portugal's citizenship test is
-  // the need this app serves that the general-purpose language apps do not.
-  const featuredTopics = TOPICS.filter((topic) =>
-    ['cidadania', 'viagens', 'comida'].includes(topic.key));
   const lastExcerpt = lastSession?.excerpt ?? 'Olá! Bem-vindo, tudo bem contigo?';
 
   return (
@@ -150,27 +146,11 @@ export default function HomeScreen() {
             </View>
             <View style={styles.startTextWrap}>
               <Text style={styles.startTitle}>Começar agora</Text>
-              <Text style={styles.startSubtitle}>Tutor Patrício · {selectedLevel}</Text>
+              <Text style={styles.startSubtitle} numberOfLines={2}>
+                Patrício · {selectedLevel} · {TOPICS.find((t) => t.key === selectedTopic)?.label ?? 'Livre'}
+              </Text>
             </View>
           </TouchableOpacity>
-
-          <View style={styles.featuredTopicsRow}>
-            {featuredTopics.map((topic) => {
-              const active = selectedTopic === topic.key;
-              return (
-                <TouchableOpacity
-                  key={topic.key}
-                  style={[styles.featuredTopicChip, active && styles.featuredTopicChipActive]}
-                  onPress={() => setSelectedTopic(active ? null : topic.key)}
-                  activeOpacity={0.78}
-                >
-                  <Text style={[styles.featuredTopicText, active && styles.featuredTopicTextActive]}>
-                    {topic.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
 
           <View style={styles.lastConversationCard}>
             <Text style={styles.lastConversationLabel}>ÚLTIMA CONVERSA</Text>
@@ -206,12 +186,6 @@ export default function HomeScreen() {
             })}
           </View>
 
-          {selectedTopic === 'cidadania' && (
-            <Text style={styles.topicDisclaimer}>
-              Serve para praticares português sobre estes temas. Não é material de
-              estudo: confirma sempre datas e requisitos numa fonte oficial.
-            </Text>
-          )}
         </View>
 
         {/* Topics */}
@@ -235,6 +209,12 @@ export default function HomeScreen() {
               );
             })}
           </View>
+          {selectedTopic === 'cidadania' && (
+            <Text style={styles.topicDisclaimer}>
+              Serve para praticares português sobre estes temas. Não é material de
+              estudo: confirma sempre datas e requisitos numa fonte oficial.
+            </Text>
+          )}
         </View>
 
         {/* Stats row */}
@@ -388,7 +368,7 @@ const styles = StyleSheet.create({
   },
   startSubtitle: {
     fontFamily: Typography.headlineBold,
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.onSurfaceVariant,
     marginTop: 4,
   },
@@ -399,30 +379,6 @@ const styles = StyleSheet.create({
     color: Colors.onSurfaceVariant,
     marginTop: Spacing.sm,
     paddingHorizontal: 2,
-  },
-  featuredTopicsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-  },
-  featuredTopicChip: {
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    backgroundColor: Colors.surfaceContainerLow,
-  },
-  featuredTopicChipActive: {
-    backgroundColor: Colors.primary,
-  },
-  featuredTopicText: {
-    fontFamily: Typography.headlineBold,
-    fontSize: 18,
-    color: Colors.onSurface,
-  },
-  featuredTopicTextActive: {
-    color: Colors.onPrimary,
   },
   lastConversationCard: {
     margin: Spacing.lg,
