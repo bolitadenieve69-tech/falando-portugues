@@ -346,6 +346,8 @@ async def create_session(
             voice_id=req.voice_id,
             language=req.language,
             on_ready=_on_ready,
+            learner_name=user.get("username"),
+            previous_sessions=previous_sessions,
         )
     )
 

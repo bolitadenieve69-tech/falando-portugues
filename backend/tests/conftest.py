@@ -195,3 +195,23 @@ _PIPECAT_STUBS = {
 
 for name, mod in _PIPECAT_STUBS.items():
     sys.modules.setdefault(name, mod)
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _clear_rate_limits():
+    """Give every test the full rate-limit budget.
+
+    Without this, tests share one counter: whichever /session test happens to
+    run sixth gets a 429 and fails for a reason that has nothing to do with
+    what it is checking.
+    """
+    try:
+        import main
+
+        main.limiter.reset()
+    except Exception:
+        pass
+    yield

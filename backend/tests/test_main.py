@@ -575,3 +575,44 @@ class TestRoomLifecycle:
             async with main.app.router.lifespan_context(main.app):
                 pass
         assert state.task.cancelled()
+
+
+class TestSessionKnowsTheLearner:
+    """The tutor can only greet by name if the name reaches it.
+
+    Covering _spawn_bot on its own was not enough: it passed while the call
+    site in create_session quietly used the defaults.
+    """
+
+    @patch("main.create_participant_token", return_value="tok-abc")
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_passes_name_and_history_to_the_bot(self, mock_token):
+        import database
+
+        spawn = AsyncMock()
+        with patch.object(main, "_spawn_bot", new=spawn), patch.object(
+            database, "get_sessions", new=AsyncMock(return_value=[{}, {}, {}])
+        ):
+            resp = _client_with_user().post("/session", json=VALID_SESSION_BODY)
+
+        assert resp.status_code == 200
+        kwargs = spawn.call_args.kwargs
+        assert kwargs["learner_name"] == VALID_USER["username"]
+        assert kwargs["previous_sessions"] == 3
+
+    @patch("main.create_participant_token", return_value="tok-abc")
+    @patch("main.asyncio.create_task", new=_discard_coroutine_task)
+    def test_history_failure_still_starts_the_session(self, mock_token):
+        """A greeting is worth less than the conversation it introduces."""
+        import database
+
+        spawn = AsyncMock()
+        with patch.object(main, "_spawn_bot", new=spawn), patch.object(
+            database, "get_sessions", new=AsyncMock(side_effect=RuntimeError("db down"))
+        ):
+            resp = _client_with_user().post("/session", json=VALID_SESSION_BODY)
+
+        assert resp.status_code == 200
+        kwargs = spawn.call_args.kwargs
+        assert kwargs["learner_name"] == VALID_USER["username"]
+        assert kwargs["previous_sessions"] == 0
