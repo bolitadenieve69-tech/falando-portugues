@@ -161,3 +161,27 @@ class TestLearnerContext:
             "B1", "viagens", learner_name="Angel", previous_sessions=3
         )
         assert withname.startswith(base)
+
+
+class TestGarbledTranscriptionGuard:
+    """The tutor must not correct words the microphone got wrong.
+
+    Observed live on 2026-08-30: the learner said "Alentejo", the speech
+    recogniser wrote "1 entejo", and the tutor announced that the correct form
+    was "um enterro" — a funeral. It then declined to continue on the grounds
+    that a funeral was too personal a matter. One machine error became a false
+    accusation against the learner and derailed the conversation.
+    """
+
+    def test_prompt_tells_the_tutor_the_transcript_may_be_wrong(self):
+        prompt = get_language("pt-PT").build_system_prompt(level="B1", topic="livre")
+        lowered = prompt.lower()
+        assert "transcrição" in lowered
+        # It must be told to ask rather than invent.
+        assert "pergunta" in lowered
+
+    def test_guard_present_at_every_level(self):
+        profile = get_language("pt-PT")
+        for level in ["A1", "A2", "B1", "B2", "C1", "C2"]:
+            prompt = profile.build_system_prompt(level=level, topic="viagens")
+            assert "transcrição" in prompt.lower(), level

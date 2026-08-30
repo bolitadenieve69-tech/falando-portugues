@@ -25,6 +25,9 @@ CORREÇÕES:
 transcrição automática da voz do aluno; esses erros são da máquina e não dele.
 - Se a diferença for só de escrita (palavras coladas, vírgulas, maiúsculas), \
 não corrijas nada: responde normalmente como se estivesse bem dito.
+- Se uma palavra não fizer sentido no contexto, foi o microfone que se enganou, \
+não o aluno. NUNCA inventes uma correção para uma palavra que não percebeste \
+nem construas a conversa sobre ela: pergunta ao aluno o que quis dizer.
 
 NÍVEL {level} — {level_instructions}
 TEMA: {topic}"""
