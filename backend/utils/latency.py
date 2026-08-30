@@ -84,6 +84,16 @@ class TurnTimings:
         self.seen_first_token = False
         self.seen_first_audio = False
 
+    def is_open(self) -> bool:
+        """True once an input mark has opened a turn.
+
+        Output frames keep arriving after a turn closes (the tail of the reply
+        still being spoken). Without this guard they mark first_token on the
+        fresh state, and the next turn's transcript then lands *after* it,
+        producing a negative llm_ms.
+        """
+        return "transcript" in self.marks or "speech_end" in self.marks
+
     def begin_if_idle(self) -> None:
         """Open a new turn on the first mark that arrives after a reset."""
         if not self.marks:
@@ -177,6 +187,8 @@ class LatencyProbe(IdentityFilter):
             self._t.transcript_chars = len(frame.text or "")
 
     def _observe_output(self, frame: Frame) -> None:
+        if not self._t.is_open():
+            return  # tail of a turn that already closed
         if isinstance(frame, TTSAudioRawFrame):
             if not self._t.seen_first_audio:
                 self._t.seen_first_audio = True

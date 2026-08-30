@@ -149,3 +149,31 @@ class TestResilience:
         pin, pout = probes
         monkeypatch.setattr(lat, "LATENCY_LOG", "/nonexistent-root/nope/latency.jsonl")
         await _turn(pin, pout)  # swallowed, no exception
+
+
+class TestTurnBleed:
+    """Output frames keep flowing after a turn closes; they must not leak."""
+
+    @pytest.mark.asyncio
+    async def test_reply_tail_does_not_poison_the_next_turn(self, probes):
+        pin, pout = probes
+        await _turn(pin, pout)
+        # The rest of the spoken reply arrives after the turn was recorded.
+        for _ in range(3):
+            await pout.process_frame(TextFrame(text="resto da frase"), DOWN)
+            await pout.process_frame(TTSAudioRawFrame(), DOWN)
+        await _turn(pin, pout)
+
+        recs = _records(pin)
+        assert len(recs) == 2
+        for r in recs:
+            assert r["llm_ms"] >= 0, "a stale first_token made llm_ms negative"
+            assert r["tts_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_tail_frames_write_no_record(self, probes):
+        pin, pout = probes
+        await _turn(pin, pout)
+        await pout.process_frame(TextFrame(text="cauda"), DOWN)
+        await pout.process_frame(TTSAudioRawFrame(), DOWN)
+        assert len(_records(pin)) == 1
