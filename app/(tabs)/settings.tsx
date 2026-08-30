@@ -133,7 +133,7 @@ export default function SettingsScreen() {
           style={styles.settingsHero}
         >
           <Text style={styles.settingsHeroEyebrow}>AJUSTES DO TUTOR</Text>
-          <Text style={styles.settingsHeroTitle}>Deixa o Patrício falar contigo ao teu ritmo.</Text>
+          <Text style={styles.settingsHeroTitle}>Deixa o {TUTOR_VOICES.find((v) => v.id === selectedVoice)?.name ?? 'teu tutor'} falar contigo ao teu ritmo.</Text>
         </LinearGradient>
 
         <LevelAssessmentCard
@@ -149,47 +149,27 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>O meu nível</Text>
           <Text style={styles.sectionMeta}>PROGRESSO</Text>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.levelRow}
-        >
+        <View style={styles.levelRow}>
           {LEVELS.map((l) => {
             const active = level === l.key;
             return (
               <TouchableOpacity
                 key={l.key}
-                style={styles.levelCardWrap}
+                style={[styles.levelCard, active && styles.levelCardActive]}
                 onPress={() => { setLevel(l.key); persist({ level: l.key }); }}
                 activeOpacity={0.75}
               >
-                <View
-                  style={[
-                    styles.levelCard,
-                    active && styles.levelCardActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.levelKey,
-                      active && styles.levelKeyActive,
-                    ]}
-                  >
-                    {l.label}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.levelDesc,
-                    active && styles.levelDescActive,
-                  ]}
-                >
-                  {l.desc.toUpperCase()}
+                <Text style={[styles.levelKey, active && styles.levelKeyActive]}>
+                  {l.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
+        {/* One caption for the selected level, so all six fit across the row. */}
+        <Text style={styles.levelDescActive}>
+          {LEVELS.find((l) => l.key === level)?.desc}
+        </Text>
 
         {/* Tutor voice */}
         <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
@@ -445,10 +425,15 @@ const styles = StyleSheet.create({
   },
 
   // Level
-  levelRow: { gap: 10, paddingBottom: 4 },
+  levelRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: 4,
+  },
   levelCardWrap: { alignItems: 'center', gap: 6 },
   levelCard: {
-    width: 80,
+    flex: 1,
     paddingVertical: Spacing.md,
     borderRadius: 12,
     backgroundColor: Colors.surfaceContainerLow,

@@ -35,6 +35,14 @@ const TOPIC_LABELS: Record<string, string> = {
   livre: 'Conversa Livre',
 };
 
+/** 47 -> "47 min", 185 -> "3h 5m". Reads as an achievement, not a raw count. */
+function formatSpoken(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 function formatDate(ts: number): string {
   const d = new Date(ts);
   const today = new Date();
@@ -50,11 +58,43 @@ function formatDuration(seconds: number): string {
   return `${Math.round(seconds / 60)} min`;
 }
 
+/**
+ * Something true about this learner, rather than generic advice.
+ *
+ * Ordered by how much it has been earned: a measured improvement first, then a
+ * personal best, then a target within reach, and only then a plain welcome.
+ */
+function encouragement(stats: ReturnType<typeof computeStats>) {
+  if (stats.trend !== null && stats.trend >= 3) {
+    return {
+      title: 'Estás a melhorar',
+      body: `Cometes menos erros do que nas tuas primeiras conversas: ${stats.trend} pontos acima.`,
+    };
+  }
+  if (stats.longestMinutes >= 15) {
+    return {
+      title: 'Já aguentas conversas longas',
+      body: `A tua mais longa durou ${stats.longestMinutes} minutos, tudo em português.`,
+    };
+  }
+  if (stats.milestone && stats.milestone.remaining <= 20) {
+    return {
+      title: 'Estás quase lá',
+      body: `Só ${stats.milestone.remaining} minutos para chegares às ${formatSpoken(stats.milestone.target)} a falar.`,
+    };
+  }
+  return {
+    title: 'Bom começo',
+    body: 'Falar é a parte que mais custa e a que mais rende. Cada minuto conta.',
+  };
+}
+
 export default function HistoryScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [isAtEnd, setIsAtEnd] = useState(false);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
-  const [stats, setStats] = useState({ totalSessions: 0, accuracy: 0, streakDays: 0, byTopic: [] as TopicStat[] });
+  // Seed from the same function that fills it, so the shape can never drift.
+  const [stats, setStats] = useState(() => computeStats([]));
 
   useEffect(() => {
     let cancelled = false;
@@ -119,25 +159,55 @@ export default function HistoryScreen() {
           end={{ x: 1, y: 0 }}
           style={styles.progressHero}
         >
-          <Text style={styles.progressEyebrow}>O TEU PORTUGUÊS</Text>
-          <Text style={styles.progressTitle}>Cada conversa conta.</Text>
+          <Text style={styles.progressEyebrow}>JÁ FALASTE</Text>
           <View style={styles.progressHeroFooter}>
             <View>
-              <Text style={styles.progressNumber}>{stats.totalSessions}</Text>
-              <Text style={styles.progressCaption}>conversas</Text>
+              <Text style={styles.progressNumber}>{formatSpoken(stats.totalMinutes)}</Text>
+              <Text style={styles.progressCaption}>em {stats.totalSessions} conversas</Text>
             </View>
-            <View style={styles.progressBadge}>
-              <MaterialCommunityIcons name="chart-line" size={16} color={Colors.onPrimary} />
-              <Text style={styles.progressBadgeText}>{stats.accuracy}% precisão</Text>
-            </View>
+            {stats.trend !== null && stats.trend !== 0 && (
+              <View style={styles.progressBadge}>
+                <MaterialCommunityIcons
+                  name={stats.trend > 0 ? 'trending-up' : 'trending-down'}
+                  size={16}
+                  color={Colors.onPrimary}
+                />
+                <Text style={styles.progressBadgeText}>
+                  {stats.trend > 0 ? '+' : ''}{stats.trend} pts
+                </Text>
+              </View>
+            )}
           </View>
         </LinearGradient>
+
+        {/* The next thing to aim at. Time spoken only ever grows, so a missed
+            day costs nothing already earned. */}
+        {stats.milestone && (
+          <View style={styles.milestoneCard}>
+            <View style={styles.milestoneHeader}>
+              <Text style={styles.milestoneTitle}>
+                {stats.milestone.remaining} min para {formatSpoken(stats.milestone.target)}
+              </Text>
+              <Text style={styles.milestonePct}>
+                {Math.round(stats.milestone.progress * 100)}%
+              </Text>
+            </View>
+            <View style={styles.milestoneTrack}>
+              <View
+                style={[
+                  styles.milestoneFill,
+                  { width: `${Math.max(3, stats.milestone.progress * 100)}%` },
+                ]}
+              />
+            </View>
+          </View>
+        )}
 
         <View style={styles.statsGrid}>
           {[
             { label: 'Conversas', value: String(stats.totalSessions), icon: 'forum-outline', color: Colors.primary },
             { label: 'Precisão', value: `${stats.accuracy}%`, icon: 'target', color: Colors.secondary },
-            { label: 'Dias seguidos', value: String(stats.streakDays), icon: 'fire', color: Colors.tertiary },
+            { label: 'Conversa mais longa', value: `${stats.longestMinutes} min`, icon: 'trophy-outline', color: Colors.tertiary },
           ].map((stat) => (
             <View key={stat.label} style={styles.statCard}>
               <View style={[styles.statIconWrap, { backgroundColor: stat.color + '16' }]}>
@@ -155,10 +225,8 @@ export default function HistoryScreen() {
               <MaterialCommunityIcons name="heart-outline" size={18} color={Colors.primary} />
             </View>
             <View style={styles.coachTextWrap}>
-              <Text style={styles.coachTitle}>Bom ritmo</Text>
-              <Text style={styles.coachText}>
-                O próximo passo é manter conversas curtas e constantes.
-              </Text>
+              <Text style={styles.coachTitle}>{encouragement(stats).title}</Text>
+              <Text style={styles.coachText}>{encouragement(stats).body}</Text>
             </View>
           </View>
         )}
@@ -365,6 +433,42 @@ const styles = StyleSheet.create({
     fontFamily: Typography.labelMedium,
     fontSize: 12,
     color: Colors.onPrimary,
+  },
+  milestoneCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: Colors.primary + '2E',
+  },
+  milestoneHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: Spacing.sm,
+  },
+  milestoneTitle: {
+    fontFamily: Typography.headlineBold,
+    fontSize: 15,
+    color: Colors.onSurface,
+  },
+  milestonePct: {
+    fontFamily: Typography.labelMedium,
+    fontSize: 13,
+    color: Colors.primary,
+  },
+  milestoneTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.surfaceContainerHigh,
+    overflow: 'hidden',
+  },
+  milestoneFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
   },
   statsGrid: {
     flexDirection: 'row',

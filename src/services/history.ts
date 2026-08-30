@@ -81,6 +81,43 @@ export interface TopicStat {
   accuracy: number;
 }
 
+/** Minutes spoken worth celebrating. Each one is reachable from the one before. */
+const MILESTONES_MIN = [10, 30, 60, 120, 180, 240, 300, 420, 600, 900, 1200];
+
+/**
+ * The next milestone and how close it is.
+ *
+ * Time spoken is the number that matters in learning to speak, and unlike a
+ * streak it only ever grows: missing a day costs nothing already earned.
+ */
+export function nextMilestone(minutes: number) {
+  const target = MILESTONES_MIN.find((m) => m > minutes) ?? null;
+  if (target === null) return null;
+  const previous = [...MILESTONES_MIN].reverse().find((m) => m <= minutes) ?? 0;
+  const span = target - previous;
+  return {
+    target,
+    remaining: Math.max(0, Math.ceil(target - minutes)),
+    progress: span > 0 ? Math.min(1, (minutes - previous) / span) : 0,
+  };
+}
+
+/**
+ * Whether accuracy is moving, comparing the recent half against the earlier one.
+ * Null until there are enough sessions for the comparison to mean anything.
+ */
+export function accuracyTrend(sessions: SessionRecord[]): number | null {
+  if (sessions.length < 4) return null;
+  const chronological = [...sessions].sort((a, b) => a.startedAt - b.startedAt);
+  const half = Math.floor(chronological.length / 2);
+  const rate = (group: SessionRecord[]) => {
+    const msgs = group.reduce((n, s) => n + s.messageCount, 0);
+    const corr = group.reduce((n, s) => n + s.correctionCount, 0);
+    return msgs > 0 ? ((msgs - corr) / msgs) * 100 : 0;
+  };
+  return Math.round(rate(chronological.slice(half)) - rate(chronological.slice(0, half)));
+}
+
 export function computeStats(sessions: SessionRecord[]) {
   const totalSessions = sessions.length;
   const totalCorrections = sessions.reduce((sum, s) => sum + s.correctionCount, 0);
@@ -90,10 +127,27 @@ export function computeStats(sessions: SessionRecord[]) {
       ? Math.round(((totalMessages - totalCorrections) / totalMessages) * 100)
       : 0;
 
+  const totalMinutes = Math.round(
+    sessions.reduce((sum, s) => sum + s.durationSeconds, 0) / 60,
+  );
+  const longestMinutes = Math.round(
+    Math.max(0, ...sessions.map((s) => s.durationSeconds)) / 60,
+  );
+
   const streakDays = computeStreak(sessions);
   const byTopic = computeByTopic(sessions);
 
-  return { totalSessions, totalCorrections, accuracy, streakDays, byTopic };
+  return {
+    totalSessions,
+    totalCorrections,
+    accuracy,
+    streakDays,
+    byTopic,
+    totalMinutes,
+    longestMinutes,
+    trend: accuracyTrend(sessions),
+    milestone: nextMilestone(totalMinutes),
+  };
 }
 
 function computeByTopic(sessions: SessionRecord[]): TopicStat[] {

@@ -1,5 +1,7 @@
 import {
   computeStats,
+  nextMilestone,
+  accuracyTrend,
   saveSession,
   loadSessions,
   clearHistory,
@@ -216,5 +218,87 @@ describe('clearHistory', () => {
 
   it('does nothing when file does not exist', async () => {
     await expect(clearHistory()).resolves.toBeUndefined();
+  });
+});
+
+
+describe('nextMilestone', () => {
+  it('points at the first target from zero', () => {
+    const m = nextMilestone(0);
+    expect(m?.target).toBe(10);
+    expect(m?.remaining).toBe(10);
+  });
+
+  it('measures progress between the previous target and the next', () => {
+    const m = nextMilestone(45); // halfway from 30 to 60
+    expect(m?.target).toBe(60);
+    expect(m?.remaining).toBe(15);
+    expect(m?.progress).toBeCloseTo(0.5, 1);
+  });
+
+  it('moves on once a target is passed', () => {
+    expect(nextMilestone(61)?.target).toBe(120);
+  });
+
+  it('returns null once every target is behind you', () => {
+    expect(nextMilestone(99999)).toBeNull();
+  });
+});
+
+describe('accuracyTrend', () => {
+  const at = (startedAt: number, messageCount: number, correctionCount: number) =>
+    makeSession({ startedAt, messageCount, correctionCount });
+
+  it('stays silent until there is enough history to compare', () => {
+    expect(accuracyTrend([at(1, 10, 5), at(2, 10, 1)])).toBeNull();
+  });
+
+  it('reports improvement when recent sessions have fewer corrections', () => {
+    const trend = accuracyTrend([
+      at(1, 10, 5), at(2, 10, 5), at(3, 10, 1), at(4, 10, 1),
+    ]);
+    expect(trend).toBeGreaterThan(0);
+  });
+
+  it('reports a decline when recent sessions have more', () => {
+    const trend = accuracyTrend([
+      at(1, 10, 1), at(2, 10, 1), at(3, 10, 6), at(4, 10, 6),
+    ]);
+    expect(trend).toBeLessThan(0);
+  });
+
+  it('is unaffected by the order the sessions come in', () => {
+    const asc = [at(1, 10, 5), at(2, 10, 5), at(3, 10, 1), at(4, 10, 1)];
+    expect(accuracyTrend([...asc].reverse())).toBe(accuracyTrend(asc));
+  });
+});
+
+describe('computeStats — the encouraging numbers', () => {
+  it('adds up the time actually spoken', () => {
+    const stats = computeStats([
+      makeSession({ durationSeconds: 600 }),
+      makeSession({ durationSeconds: 300 }),
+    ]);
+    expect(stats.totalMinutes).toBe(15);
+  });
+
+  it('remembers the longest conversation', () => {
+    const stats = computeStats([
+      makeSession({ durationSeconds: 120 }),
+      makeSession({ durationSeconds: 900 }),
+    ]);
+    expect(stats.longestMinutes).toBe(15);
+  });
+
+  it('gives something to aim at from the first session', () => {
+    const stats = computeStats([makeSession({ durationSeconds: 180 })]);
+    expect(stats.milestone?.target).toBe(10);
+  });
+
+  it('handles an empty history without breaking', () => {
+    const stats = computeStats([]);
+    expect(stats.totalMinutes).toBe(0);
+    expect(stats.longestMinutes).toBe(0);
+    expect(stats.trend).toBeNull();
   });
 });
