@@ -47,6 +47,22 @@ MAX_SESSION_SECONDS = int(os.environ.get("MAX_SESSION_MINUTES", "30")) * 60
 # vs. voice quality for PT-PT before committing to a default.
 TTS_MODEL = os.environ.get("ELEVENLABS_TTS_MODEL", "eleven_multilingual_v2")
 
+# How much silence ends the learner's turn. A learner pauses to hunt for a word
+# far more than a native speaker does, and at the original 1000 ms a third of the
+# turns in a real session were cut mid-sentence: the fragment triggered a reply
+# that was then cancelled by the rest of the utterance, so the learner heard
+# nothing. Lower levels get more thinking time. The cost is that the tutor waits
+# longer before answering, which is the better trade: being interrupted mid
+# sentence is worse than a slightly slower reply.
+_ENDPOINTING_BY_LEVEL = {
+    "A1": 2200, "A2": 2000, "B1": 1700, "B2": 1500, "C1": 1300, "C2": 1200,
+}
+_ENDPOINTING_OVERRIDE = int(os.environ.get("DEEPGRAM_ENDPOINTING_MS", "0"))
+
+
+def endpointing_for(level: str) -> int:
+    return _ENDPOINTING_OVERRIDE or _ENDPOINTING_BY_LEVEL.get(level, 1700)
+
 
 class TranscriptPublisher(IdentityFilter):
     """Taps into the frame stream and publishes transcripts to the LiveKit data channel.
@@ -214,7 +230,7 @@ async def _run_pipeline(
         live_options=LiveOptions(
             language=profile.stt_language,
             model="nova-3-general",
-            endpointing=1000,
+            endpointing=endpointing_for(level),
             smart_format=True,
             interim_results=True,
             punctuate=True,

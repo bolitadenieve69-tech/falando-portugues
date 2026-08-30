@@ -456,3 +456,30 @@ class TestOnReadyCallback:
 
         await handler(transport, "user-1")
         assert ready_called is True
+
+
+class TestEndpointing:
+    """How long a learner may pause before the turn is considered over."""
+
+    def test_beginners_get_more_thinking_time(self):
+        from bot import endpointing_for
+        assert endpointing_for("A1") > endpointing_for("B1") > endpointing_for("C2")
+
+    def test_every_level_is_longer_than_the_old_default(self):
+        # 1000 ms cut a third of the turns mid-sentence in a real session.
+        from bot import endpointing_for
+        for level in ["A1", "A2", "B1", "B2", "C1", "C2"]:
+            assert endpointing_for(level) > 1000, level
+
+    def test_unknown_level_falls_back(self):
+        from bot import endpointing_for
+        assert endpointing_for("Z9") == endpointing_for("B1")
+
+    def test_environment_overrides_every_level(self, monkeypatch):
+        import importlib, bot
+        monkeypatch.setenv("DEEPGRAM_ENDPOINTING_MS", "3000")
+        importlib.reload(bot)
+        assert bot.endpointing_for("A1") == 3000
+        assert bot.endpointing_for("C2") == 3000
+        monkeypatch.delenv("DEEPGRAM_ENDPOINTING_MS")
+        importlib.reload(bot)
