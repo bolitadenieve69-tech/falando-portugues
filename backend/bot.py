@@ -54,17 +54,34 @@ TTS_MODEL = os.environ.get("ELEVENLABS_TTS_MODEL", "eleven_multilingual_v2")
 # nothing. Lower levels get more thinking time. The cost is that the tutor waits
 # longer before answering, which is the better trade: being interrupted mid
 # sentence is worse than a slightly slower reply.
+# How long a learner may fall silent before the tutor takes the floor.
+#
+# The first values here were set from what feels natural between two fluent
+# speakers. That was the wrong reference: measured with a real B1 learner, a
+# single sentence contained pauses of 3.6 s and 5.0 s while he hunted for a
+# word, and the tutor interrupted every time. In an app for people learning to
+# speak, hesitation is the normal case, so patience is bought at every level.
+#
+# The cost is real and is paid when the learner has genuinely finished: the
+# tutor now waits longer before answering. That wait does not show up in the
+# latency measurements, which start once the turn is declared over.
 _ENDPOINTING_BY_LEVEL = {
-    "A1": 2500, "A2": 2300, "B1": 2000, "B2": 1800, "C1": 1500, "C2": 1300,
+    "A1": 4000, "A2": 3600, "B1": 3200, "B2": 3000, "C1": 2200, "C2": 1800,
 }
 _ENDPOINTING_OVERRIDE = int(os.environ.get("DEEPGRAM_ENDPOINTING_MS", "0"))
 
-# Deepgram's floor for this parameter.
+# Deepgram's floor and ceiling for this parameter; outside them it rejects the
+# connection, which would take the whole session down rather than degrade it.
 _MIN_UTTERANCE_END_MS = 1000
+_MAX_UTTERANCE_END_MS = 5000
 
 
 def endpointing_for(level: str) -> int:
-    return _ENDPOINTING_OVERRIDE or _ENDPOINTING_BY_LEVEL.get(level, 2000)
+    # An unknown level falls back to B1, read from the table rather than
+    # repeated as a literal, so the two can never drift apart.
+    return _ENDPOINTING_OVERRIDE or _ENDPOINTING_BY_LEVEL.get(
+        level, _ENDPOINTING_BY_LEVEL["B1"]
+    )
 
 
 def utterance_end_for(level: str) -> int:
@@ -75,7 +92,10 @@ def utterance_end_for(level: str) -> int:
     between words, which separates thinking from stopping. Held above the
     endpointing value so it acts as the later, deciding signal.
     """
-    return max(_MIN_UTTERANCE_END_MS, endpointing_for(level) + 800)
+    return min(
+        _MAX_UTTERANCE_END_MS,
+        max(_MIN_UTTERANCE_END_MS, endpointing_for(level) + 800),
+    )
 
 
 class TranscriptPublisher(IdentityFilter):

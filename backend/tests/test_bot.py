@@ -493,3 +493,39 @@ class TestEndpointing:
         assert bot.endpointing_for("C2") == 3000
         monkeypatch.delenv("DEEPGRAM_ENDPOINTING_MS")
         importlib.reload(bot)
+
+
+class TestPatienceWithHesitation:
+    """A learner hunting for a word must not be cut off mid-thought.
+
+    Measured on 2026-08-30 with a real B1 learner: pauses of 3.6 s and 5.0 s
+    inside a single sentence. With endpointing at 2000 ms the tutor took the
+    floor mid-thought and then got cut off when the learner resumed — 3 of 13
+    replies were discarded that way. Hesitation is not the edge case in an app
+    for people learning to speak; it is the normal case.
+    """
+
+    def test_gives_a_learner_at_least_three_seconds_to_think(self):
+        from bot import endpointing_for
+
+        for level in ["A1", "A2", "B1", "B2"]:
+            assert endpointing_for(level) >= 3000, level
+
+    def test_even_the_most_fluent_level_waits_more_than_a_second_and_a_half(self):
+        from bot import endpointing_for
+
+        assert endpointing_for("C2") >= 1700
+
+    def test_patience_still_decreases_with_fluency(self):
+        from bot import endpointing_for
+
+        levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+        values = [endpointing_for(lvl) for lvl in levels]
+        assert values == sorted(values, reverse=True)
+
+    def test_deciding_signal_stays_within_deepgram_ceiling(self):
+        """utterance_end_ms above 5000 is rejected by Deepgram."""
+        from bot import utterance_end_for
+
+        for level in ["A1", "A2", "B1", "B2", "C1", "C2"]:
+            assert 1000 <= utterance_end_for(level) <= 5000, level
