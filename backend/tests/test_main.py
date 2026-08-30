@@ -225,6 +225,8 @@ class TestSpawnBot:
             voice_id="DMcOknq8n1B6XshFIJKJ",
             language="pt-PT",
             on_ready=None,
+            learner_name=None,
+            previous_sessions=0,
         )
 
     @pytest.mark.asyncio

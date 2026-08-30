@@ -317,6 +317,17 @@ async def create_session(
 
     livekit_url = os.environ["LIVEKIT_URL"]
 
+    # The tutor is told who it is talking to, so it greets the learner by name
+    # instead of asking again who they are every single session. Looking this up
+    # must never stop a session starting: a greeting is worth less than the
+    # conversation it introduces.
+    previous_sessions = 0
+    try:
+        from database import get_sessions
+        previous_sessions = len(await get_sessions(user["id"]))
+    except Exception as exc:
+        logger.warning("Could not read session history for the greeting: %s", exc)
+
     await _cleanup_finished_tasks()
 
     async with _room_states_lock:
@@ -381,6 +392,8 @@ async def _spawn_bot(
     voice_id: str = "DMcOknq8n1B6XshFIJKJ",
     language: str = DEFAULT_LANGUAGE,
     on_ready: Callable[[], None] | None = None,
+    learner_name: str | None = None,
+    previous_sessions: int = 0,
 ) -> None:
     _log = logging.getLogger("bot.spawn")
     try:
@@ -398,6 +411,8 @@ async def _spawn_bot(
             voice_id=voice_id,
             language=language,
             on_ready=on_ready,
+            learner_name=learner_name,
+            previous_sessions=previous_sessions,
         )
         await _set_room_status(room_name, "ended")
         _log.info("Bot finished room=%s", room_name)

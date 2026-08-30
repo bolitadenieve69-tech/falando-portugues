@@ -196,12 +196,16 @@ async def run_bot(
     language: str = DEFAULT_LANGUAGE,
     max_retries: int = 3,
     on_ready: Callable[[], None] | None = None,
+    learner_name: str | None = None,
+    previous_sessions: int = 0,
 ) -> None:
     load_dotenv(override=True)
 
     for attempt in range(1, max_retries + 1):
         try:
-            await _run_pipeline(room_url, token, room_name, level, topic, voice_id, language, on_ready=on_ready)
+            await _run_pipeline(room_url, token, room_name, level, topic, voice_id, language,
+                                on_ready=on_ready, learner_name=learner_name,
+                                previous_sessions=previous_sessions)
             return
         except Exception as exc:
             if attempt < max_retries:
@@ -226,6 +230,8 @@ async def _run_pipeline(
     voice_id: str,
     language: str = DEFAULT_LANGUAGE,
     on_ready: Callable[[], None] | None = None,
+    learner_name: str | None = None,
+    previous_sessions: int = 0,
 ) -> None:
     profile = get_language(language) or get_language(DEFAULT_LANGUAGE)
 
@@ -252,7 +258,10 @@ async def _run_pipeline(
         ),
     )
 
-    system_prompt = profile.build_system_prompt(level=level, topic=topic)
+    system_prompt = profile.build_system_prompt(
+        level=level, topic=topic,
+        learner_name=learner_name, previous_sessions=previous_sessions,
+    )
     logger.info("[bot] lang=%s prompt[:120]: %s", profile.code, system_prompt[:120])
 
     llm = _SerialAnthropicLLM(

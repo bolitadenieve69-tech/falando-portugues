@@ -124,3 +124,40 @@ class TestCitizenshipTopic:
     def test_label_stays_short_enough_for_the_interface(self):
         for code in _ALL_CODES:
             assert len(get_language(code).topic_labels["cidadania"]) < 60, code
+
+
+class TestLearnerContext:
+    """The tutor is told who it is talking to, so it stops asking every session."""
+
+    def test_returning_learner_is_greeted_by_name(self):
+        prompt = get_language("pt-PT").build_system_prompt(
+            "B1", "livre", learner_name="Angel", previous_sessions=12
+        )
+        assert "Angel" in prompt
+        assert "12 conversas" in prompt
+
+    def test_first_conversation_gets_encouragement(self):
+        prompt = get_language("pt-PT").build_system_prompt(
+            "B1", "livre", learner_name="Angel", previous_sessions=0
+        )
+        assert "primeira conversa" in prompt
+        assert "encorajamento" in prompt
+
+    def test_the_tutor_is_told_not_to_ask_again(self):
+        for previous in (0, 5):
+            prompt = get_language("pt-PT").build_system_prompt(
+                "B1", "livre", learner_name="Angel", previous_sessions=previous
+            )
+            assert "NUNCA lhe perguntes como se chama" in prompt
+
+    def test_no_name_means_no_learner_section(self):
+        """An anonymous session must not gain an empty or broken greeting."""
+        prompt = get_language("pt-PT").build_system_prompt("B1", "livre")
+        assert "ALUNO:" not in prompt
+
+    def test_the_rest_of_the_prompt_is_untouched(self):
+        base = get_language("pt-PT").build_system_prompt("B1", "viagens")
+        withname = get_language("pt-PT").build_system_prompt(
+            "B1", "viagens", learner_name="Angel", previous_sessions=3
+        )
+        assert withname.startswith(base)

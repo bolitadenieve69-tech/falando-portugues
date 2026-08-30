@@ -50,7 +50,36 @@ class LanguageProfile:
     def voice(self, voice_id: str) -> Voice | None:
         return next((v for v in self.voices if v.id == voice_id), None)
 
-    def build_system_prompt(self, level: str, topic: str) -> str:
+    def learner_context(self, name: str | None, previous_sessions: int) -> str:
+        """Tell the tutor who it is talking to.
+
+        Without this the tutor opens every session asking the learner's name and
+        where they are from, which it has already been told, and which makes the
+        app feel like it has never met them.
+        """
+        if not name:
+            return ""
+        if previous_sessions > 0:
+            return (
+                f"\n\nALUNO: chama-se {name} e já teve {previous_sessions} "
+                "conversas contigo. Cumprimenta-o pelo nome e diz que é bom voltar "
+                "a falar com ele, depois entra logo no tema com uma pergunta. "
+                "NUNCA lhe perguntes como se chama nem de onde é: já sabes."
+            )
+        return (
+            f"\n\nALUNO: chama-se {name} e esta é a primeira conversa contigo. "
+            "Dá-lhe as boas-vindas pelo nome, diz-lhe uma frase curta de "
+            "encorajamento sobre começar a falar português, e faz-lhe logo uma "
+            "pergunta simples. NUNCA lhe perguntes como se chama: já sabes."
+        )
+
+    def build_system_prompt(
+        self,
+        level: str,
+        topic: str,
+        learner_name: str | None = None,
+        previous_sessions: int = 0,
+    ) -> str:
         # Unknown level/topic fall back to shared defaults (B1 / livre exist in
         # every profile) so a bad client request degrades gracefully.
         level_instructions = self.level_instructions.get(
@@ -60,11 +89,12 @@ class LanguageProfile:
         brief = self.topic_briefs.get(topic)
         if brief:
             topic_label = f"{topic_label}\n{brief}"
-        return self.system_prompt_template.format(
+        prompt = self.system_prompt_template.format(
             level=level,
             topic=topic_label,
             level_instructions=level_instructions,
         )
+        return prompt + self.learner_context(learner_name, previous_sessions)
 
 
 # Shared fallback keys — present in every language profile.
