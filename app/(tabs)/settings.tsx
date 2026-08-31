@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
+import { BuilderCredit } from '../../src/features/settings/components/BuilderCredit';
 import type { UserLevel } from '../../src/features/session/types';
 import { TUTOR_VOICES } from '../../src/constants/voices';
 import { loadPreferences, savePreferences } from '../../src/services/preferences';
@@ -24,7 +25,6 @@ import { LevelAssessmentCard } from '../../src/features/settings/components/Leve
 
 const WARM_GREEN = Colors.flagGreen;
 const WARM_RED = Colors.flagRed;
-const BUILDER_LOGO = require('../../assets/ag-ai-agency-logo.png');
 
 const LEVELS: { key: UserLevel; label: string; desc: string }[] = [
   { key: 'A1', label: 'A1', desc: 'Iniciante' },
@@ -324,11 +324,7 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>TERMINAR SESSÃO</Text>
         </TouchableOpacity>
 
-        <View style={styles.builderCard}>
-          <Image source={BUILDER_LOGO} style={styles.builderLogo} resizeMode="contain" />
-          <Text style={styles.builderTitle}>AG AI Agency</Text>
-          <Text style={styles.builderSubtitle}>Builder da experiência Falando Português</Text>
-        </View>
+        <BuilderCredit />
 
         <View style={{ height: 48 }} />
       </ScrollView>
@@ -585,33 +581,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.tertiary,
     letterSpacing: 3,
-  },
-  builderCard: {
-    marginTop: Spacing.xl,
-    alignItems: 'center',
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceContainer,
-    borderWidth: 1,
-    borderColor: Colors.secondary + '16',
-  },
-  builderLogo: {
-    width: 128,
-    height: 128,
-    opacity: 0.92,
-  },
-  builderTitle: {
-    fontFamily: Typography.headlineBold,
-    fontSize: 16,
-    color: Colors.onSurface,
-    marginTop: Spacing.sm,
-  },
-  builderSubtitle: {
-    fontFamily: Typography.label,
-    fontSize: 12,
-    color: Colors.onSurfaceVariant,
-    marginTop: 2,
-    textAlign: 'center',
   },
   scrollToEndButton: {
     position: 'absolute',
