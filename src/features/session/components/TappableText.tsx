@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Typography, BorderRadius, Spacing } from '../../../constants/theme';
+import { extractExpression } from '../utils/expression';
 
 import * as SecureStore from 'expo-secure-store';
 
@@ -69,11 +70,27 @@ export function TappableText({ text, style }: TappableTextProps) {
 
   const words = text.split(/(\s+)/);
 
+  /** Índice de la palabra dentro del texto, ignorando los espacios. */
+  function wordIndexOf(chunkIndex: number): number {
+    return words.slice(0, chunkIndex).filter((c) => !/^\s+$/.test(c)).length;
+  }
+
+  /** Pulsación larga: consulta el giro entero, no la palabra suelta. */
+  async function handleExpressionPress(chunkIndex: number) {
+    const expression = extractExpression(text, wordIndexOf(chunkIndex));
+    if (!expression) return;
+    await lookUp(expression, expression);
+  }
+
   async function handleWordPress(raw: string) {
     const word = raw.replace(/[^a-záàâãéèêíïóôõúüçA-ZÁÀÂÃÉÈÊÍÏÓÔÕÚÜÇ]/g, '').toLowerCase();
     if (!word) return;
+    await lookUp(word, raw.trim());
+  }
 
-    setSelectedWord(raw.trim());
+  async function lookUp(query: string, label: string) {
+    const word = query;
+    setSelectedWord(label);
     setTranslation(null);
     setLoading(true);
 
@@ -106,6 +123,7 @@ export function TappableText({ text, style }: TappableTextProps) {
               key={i}
               style={styles.word}
               onPress={() => handleWordPress(chunk)}
+              onLongPress={() => handleExpressionPress(i)}
             >
               {chunk}
             </Text>
@@ -138,7 +156,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.onSurface,
     textDecorationLine: 'underline',
-    textDecorationColor: Colors.primary + '55',
+    textDecorationColor: Colors.primary + 'AA',
     textDecorationStyle: 'dotted',
   },
   overlay: {

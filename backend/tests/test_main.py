@@ -616,3 +616,59 @@ class TestSessionKnowsTheLearner:
         kwargs = spawn.call_args.kwargs
         assert kwargs["learner_name"] == VALID_USER["username"]
         assert kwargs["previous_sessions"] == 0
+
+
+class TestTranslateExpressions:
+    """Consultar expresiones, no sólo palabras sueltas.
+
+    El caso en que más falta hace un diccionario es justamente el que no
+    estaba cubierto: el modismo. Tocar "está" por separado en "está-se bem"
+    no le dice nada al alumno.
+    """
+
+    def _mock_anthropic_response(self, translation: str) -> MagicMock:
+        msg = MagicMock()
+        msg.content = [MagicMock(text=translation)]
+        client = MagicMock()
+        client.messages.create = AsyncMock(return_value=msg)
+        return client
+
+    @patch("database.cache_translation", new_callable=AsyncMock)
+    @patch("database.get_cached_translation", new_callable=AsyncMock, return_value=None)
+    @patch("anthropic.AsyncAnthropic")
+    def test_accepts_a_short_expression(self, mock_cls, mock_get, mock_set):
+        mock_cls.return_value = self._mock_anthropic_response("se está bien")
+        resp = _client_with_user().post("/translate", json={"word": "está-se bem"})
+        assert resp.status_code == 200
+        assert resp.json()["translation"] == "se está bien"
+
+    @patch("database.cache_translation", new_callable=AsyncMock)
+    @patch("database.get_cached_translation", new_callable=AsyncMock, return_value=None)
+    @patch("anthropic.AsyncAnthropic")
+    def test_asks_for_the_meaning_in_context_not_a_literal_gloss(
+        self, mock_cls, mock_get, mock_set
+    ):
+        """Traducir un modismo palabra por palabra no sirve de nada."""
+        fake = self._mock_anthropic_response("qué guay")
+        mock_cls.return_value = fake
+        _client_with_user().post("/translate", json={"word": "que fixe"})
+
+        prompt = fake.messages.create.call_args.kwargs["messages"][0]["content"]
+        assert "expression" in prompt.lower() or "expresión" in prompt.lower()
+
+    @patch("database.cache_translation", new_callable=AsyncMock)
+    @patch("database.get_cached_translation", new_callable=AsyncMock, return_value=None)
+    @patch("anthropic.AsyncAnthropic")
+    def test_collapses_inner_whitespace_so_the_cache_hits(
+        self, mock_cls, mock_get, mock_set
+    ):
+        """"está-se   bem" y "está-se bem" son la misma consulta."""
+        mock_cls.return_value = self._mock_anthropic_response("se está bien")
+        resp = _client_with_user().post("/translate", json={"word": "está-se   bem"})
+        assert resp.json()["word"] == "está-se bem"
+
+    def test_rejects_a_whole_sentence(self):
+        """El límite existe para que no se use como traductor general."""
+        long_text = "esta é uma frase demasiado longa para um dicionário " * 3
+        resp = _client_with_user().post("/translate", json={"word": long_text})
+        assert resp.status_code == 422

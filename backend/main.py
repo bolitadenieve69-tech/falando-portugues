@@ -209,7 +209,9 @@ class TranslateRequest(BaseModel):
     @field_validator("word")
     @classmethod
     def sanitize_word(cls, v: str) -> str:
-        cleaned = v.strip()
+        # Also accepts short expressions, so inner spacing is normalised: the
+        # cache should treat "está-se  bem" and "está-se bem" as one lookup.
+        cleaned = " ".join(v.split())
         if not cleaned:
             raise ValueError("word cannot be empty")
         return cleaned
@@ -458,7 +460,11 @@ async def translate_word(
             {
                 "role": "user",
                 "content": (
-                    f"Translate the {from_name} word '{req.word}' to {to_name}. "
+                    f"Translate the {from_name} word or expression "
+                    f"'{req.word}' to {to_name}. "
+                    "If it is an idiom, slang or a set expression, give what it "
+                    "actually means in everyday speech, never a word-by-word "
+                    "gloss. "
                     "Reply with ONLY the translation, nothing else. "
                     "If it has multiple meanings, give the most common one."
                 ),

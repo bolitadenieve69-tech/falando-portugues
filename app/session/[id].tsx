@@ -233,6 +233,17 @@ export default function SessionScreen() {
           <Text style={styles.hint}>Comece a falar em Português...</Text>
         )}
 
+        {prefs.showTranscript && transcript.length > 0 && (
+          // Las palabras del tutor se pueden consultar desde el primer día, y
+          // nadie lo descubría: el subrayado solo no basta como señal.
+          <View style={styles.lookupHint}>
+            <MaterialCommunityIcons name="gesture-tap" size={13} color={Colors.outline} />
+            <Text style={styles.lookupHintText}>
+              Toca numa palavra para a traduzir · mantém premido para uma expressão
+            </Text>
+          </View>
+        )}
+
         {prefs.showTranscript && (
           <View style={styles.transcript}>
             {transcript.map((entry) =>
@@ -512,6 +523,20 @@ const styles = StyleSheet.create({
   },
 
   // Transcript
+  lookupHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  lookupHintText: {
+    fontFamily: Typography.label,
+    fontSize: 11,
+    color: Colors.outline,
+    letterSpacing: 0.3,
+  },
   transcript: { width: '100%', gap: Spacing.xl },
   tutorBubbleWrap: { alignItems: 'flex-start', maxWidth: '85%' },
   tutorBubbleHeader: {
