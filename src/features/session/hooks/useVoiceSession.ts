@@ -5,6 +5,7 @@ import { createSession, fetchSessionStatus, saveSessionRemote } from '../../../s
 import { captureError } from '../../../services/monitoring';
 import { DEFAULT_TUTOR_NAME, voiceName } from '../../../constants/voices';
 import { saveSession } from '../../../services/history';
+import { pickExcerpt } from '../utils/excerpt';
 import { loadPreferences } from '../../../services/preferences';
 import type {
   SessionStatus,
@@ -282,7 +283,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     const config = sessionConfigRef.current;
     if (config && sessionStartRef.current > 0 && current.length > 0) {
       const corrections = current.filter((e) => e.correction != null).length;
-      const excerpt = current.find((e) => e.speaker === 'tutor')?.text ?? '';
+      const excerpt = pickExcerpt(current);
       const record = {
         id: `${sessionStartRef.current}-${endedAt}`,
         topic: config.topic,
@@ -292,7 +293,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         durationSeconds: Math.round((endedAt - sessionStartRef.current) / 1000),
         messageCount: current.length,
         correctionCount: corrections,
-        excerpt: excerpt.slice(0, 120),
+        excerpt,
       };
       // Local storage is the source of truth; the server upload is best-effort
       // and must never block ending the session or throw.
