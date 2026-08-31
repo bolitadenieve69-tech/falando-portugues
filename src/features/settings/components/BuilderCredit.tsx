@@ -2,17 +2,16 @@ import { useEffect, useRef } from 'react';
 import { View, Text, Image, Animated, Easing, StyleSheet } from 'react-native';
 import { Colors, Typography, Spacing } from '../../../constants/theme';
 
-const BUILDER_LOGO = require('../../../../assets/ag-ai-agency-logo.png');
+const BUILDER_LOGO = require('../../../../assets/ag-logo-cristal.png');
 
-const LOGO_SIZE = 84;
+const LOGO_SIZE = 96;
 
 /**
  * Crédito del estudio al pie de los ajustes.
  *
- * El logotipo es un PNG cuadrado con fondo blanco, y en una aplicación oscura
- * ese recuadro claro se peleaba con todo lo demás. Se recorta a círculo, que
- * es la forma del propio emblema, así que las esquinas blancas desaparecen sin
- * tocar el fichero.
+ * Usa la versión en cristal del emblema, recortada en círculo y con alfa. La
+ * anterior era un PNG cuadrado con fondo blanco, y en una aplicación oscura ese
+ * recuadro claro se peleaba con todo lo demás.
  *
  * Al entrar da media vuelta sobre sí mismo. Es lo último que se ve al salir de
  * la aplicación y estaba completamente inerte.
@@ -69,18 +68,13 @@ const styles = StyleSheet.create({
     height: LOGO_SIZE,
     borderRadius: LOGO_SIZE / 2,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.primary + '33',
     marginBottom: Spacing.md,
   },
   logo: {
-    // Ampliado dentro del recorte: el emblema no llega al borde del PNG y
-    // sin esto quedaría un halo blanco asomando por el contorno.
-    width: LOGO_SIZE * 1.08,
-    height: LOGO_SIZE * 1.08,
-    marginLeft: -LOGO_SIZE * 0.04,
-    marginTop: -LOGO_SIZE * 0.04,
-    opacity: 0.9,
+    // El PNG ya viene recortado en círculo y con alfa, así que ocupa el hueco
+    // exacto: no hace falta ampliarlo para esconder ningún borde.
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
   },
   title: {
     fontFamily: Typography.label,
