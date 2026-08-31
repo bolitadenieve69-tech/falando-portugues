@@ -26,9 +26,16 @@ from pipecat.frames.frames import (
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
+from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
 from pipecat.processors.aggregators.llm_context import LLMContext
-from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
+from pipecat.processors.aggregators.llm_response_universal import (
+    LLMContextAggregatorPair,
+    LLMUserAggregatorParams,
+)
 from pipecat.processors.filters.identity_filter import IdentityFilter
+from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.deepgram.stt import DeepgramSTTService, LiveOptions
@@ -54,19 +61,11 @@ TTS_MODEL = os.environ.get("ELEVENLABS_TTS_MODEL", "eleven_multilingual_v2")
 # nothing. Lower levels get more thinking time. The cost is that the tutor waits
 # longer before answering, which is the better trade: being interrupted mid
 # sentence is worse than a slightly slower reply.
-# How long a learner may fall silent before the tutor takes the floor.
-#
-# The first values here were set from what feels natural between two fluent
-# speakers. That was the wrong reference: measured with a real B1 learner, a
-# single sentence contained pauses of 3.6 s and 5.0 s while he hunted for a
-# word, and the tutor interrupted every time. In an app for people learning to
-# speak, hesitation is the normal case, so patience is bought at every level.
-#
-# The cost is real and is paid when the learner has genuinely finished: the
-# tutor now waits longer before answering. That wait does not show up in the
-# latency measurements, which start once the turn is declared over.
+# How long Deepgram waits before calling a *transcript* final. This is a
+# transcription setting and nothing more: it does not decide when the learner's
+# turn is over. That decision belongs to the turn analyser below.
 _ENDPOINTING_BY_LEVEL = {
-    "A1": 4000, "A2": 3600, "B1": 3200, "B2": 3000, "C1": 2200, "C2": 1800,
+    "A1": 2500, "A2": 2300, "B1": 2000, "B2": 1800, "C1": 1500, "C2": 1300,
 }
 _ENDPOINTING_OVERRIDE = int(os.environ.get("DEEPGRAM_ENDPOINTING_MS", "0"))
 
@@ -82,6 +81,35 @@ def endpointing_for(level: str) -> int:
     return _ENDPOINTING_OVERRIDE or _ENDPOINTING_BY_LEVEL.get(
         level, _ENDPOINTING_BY_LEVEL["B1"]
     )
+
+
+# How long the turn analyser will keep waiting while it still judges the
+# learner to be mid-thought. Smart Turn v3 reads the audio and decides whether
+# a person sounds finished, so a long ceiling here costs nothing when they
+# clearly are: the turn ends at once. It is spent only on the hesitations the
+# model recognises as unfinished.
+#
+# The default ceiling is 3 s. Measured with a real B1 learner, single sentences
+# contained pauses of 3.6 s and 5.0 s, so the cap fired first and cut him off
+# mid-thought regardless of what he sounded like. In an app for people learning
+# to speak, hesitation is the normal case, not the edge case.
+#
+# Kept below the analyser's 8 s segment limit, past which it cannot judge.
+_TURN_PATIENCE_SECS_BY_LEVEL = {
+    "A1": 6.0, "A2": 5.5, "B1": 5.0, "B2": 4.5, "C1": 4.0, "C2": 3.5,
+}
+_TURN_PATIENCE_OVERRIDE = float(os.environ.get("TURN_PATIENCE_SECS", "0"))
+
+# The analyser cannot judge a segment longer than this.
+_MAX_TURN_PATIENCE_SECS = 8.0
+
+
+def turn_patience_for(level: str) -> float:
+    """Seconds of silence the turn analyser tolerates before forcing the turn."""
+    value = _TURN_PATIENCE_OVERRIDE or _TURN_PATIENCE_SECS_BY_LEVEL.get(
+        level, _TURN_PATIENCE_SECS_BY_LEVEL["B1"]
+    )
+    return min(value, _MAX_TURN_PATIENCE_SECS)
 
 
 def utterance_end_for(level: str) -> int:
@@ -297,7 +325,24 @@ async def _run_pipeline(
         ]
     )
 
-    context_aggregator = LLMContextAggregatorPair(context)
+    # Same Smart Turn v3 analyser Pipecat uses by default, but told how long a
+    # learner at this level may hesitate before we stop believing them.
+    patience = turn_patience_for(level)
+    logger.info("[bot] turn patience: %.1fs (level %s)", patience, level)
+    context_aggregator = LLMContextAggregatorPair(
+        context,
+        user_params=LLMUserAggregatorParams(
+            user_turn_strategies=UserTurnStrategies(
+                stop=[
+                    TurnAnalyzerUserTurnStopStrategy(
+                        turn_analyzer=LocalSmartTurnAnalyzerV3(
+                            params=SmartTurnParams(stop_secs=patience),
+                        ),
+                    )
+                ],
+            ),
+        ),
+    )
     user_pub = TranscriptPublisher("user")
     tutor_pub = TranscriptPublisher("tutor")
     # Two probes, one shared state: the context aggregator downstream consumes

@@ -495,37 +495,43 @@ class TestEndpointing:
         importlib.reload(bot)
 
 
-class TestPatienceWithHesitation:
-    """A learner hunting for a word must not be cut off mid-thought.
+class TestTurnPatienceIsInTheRightLayer:
+    """Patience belongs to the turn analyser, not to the transcriber.
 
-    Measured on 2026-08-30 with a real B1 learner: pauses of 3.6 s and 5.0 s
-    inside a single sentence. With endpointing at 2000 ms the tutor took the
-    floor mid-thought and then got cut off when the learner resumed — 3 of 13
-    replies were discarded that way. Hesitation is not the edge case in an app
-    for people learning to speak; it is the normal case.
+    Deepgram's endpointing decides when a *transcript* is final. What decides
+    when the *turn* is over is Pipecat's Smart Turn v3 analyser, whose
+    stop_secs (3 s by default) caps how long it will wait no matter how
+    unfinished the learner sounds. Measured pauses of 3.6-5.0 s sailed past
+    that cap, which is why raising the Deepgram values changed nothing.
     """
 
-    def test_gives_a_learner_at_least_three_seconds_to_think(self):
-        from bot import endpointing_for
+    def test_learners_get_longer_than_the_three_second_default(self):
+        from bot import turn_patience_for
 
         for level in ["A1", "A2", "B1", "B2"]:
-            assert endpointing_for(level) >= 3000, level
+            assert turn_patience_for(level) > 3.0, level
 
-    def test_even_the_most_fluent_level_waits_more_than_a_second_and_a_half(self):
-        from bot import endpointing_for
-
-        assert endpointing_for("C2") >= 1700
-
-    def test_patience_still_decreases_with_fluency(self):
-        from bot import endpointing_for
+    def test_patience_decreases_with_fluency(self):
+        from bot import turn_patience_for
 
         levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
-        values = [endpointing_for(lvl) for lvl in levels]
+        values = [turn_patience_for(lvl) for lvl in levels]
         assert values == sorted(values, reverse=True)
 
-    def test_deciding_signal_stays_within_deepgram_ceiling(self):
-        """utterance_end_ms above 5000 is rejected by Deepgram."""
-        from bot import utterance_end_for
+    def test_capped_below_the_analysers_segment_limit(self):
+        """Silence beyond max_duration_secs (8 s) cannot be analysed."""
+        from bot import turn_patience_for
 
         for level in ["A1", "A2", "B1", "B2", "C1", "C2"]:
-            assert 1000 <= utterance_end_for(level) <= 5000, level
+            assert turn_patience_for(level) <= 8.0, level
+
+    def test_unknown_level_falls_back_to_b1(self):
+        from bot import turn_patience_for
+
+        assert turn_patience_for("Z9") == turn_patience_for("B1")
+
+    def test_transcription_endpointing_is_not_used_for_patience(self):
+        """Endpointing went back to transcription-sized values."""
+        from bot import endpointing_for
+
+        assert endpointing_for("B1") <= 2500

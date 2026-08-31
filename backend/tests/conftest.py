@@ -144,6 +144,28 @@ class LiveKitParams:
         pass
 
 
+
+class SmartTurnParams:
+    def __init__(self, *args, **kwargs):
+        self.stop_secs = kwargs.get("stop_secs")
+
+class LocalSmartTurnAnalyzerV3:
+    def __init__(self, *args, **kwargs):
+        self.params = kwargs.get("params")
+
+class TurnAnalyzerUserTurnStopStrategy:
+    def __init__(self, *args, **kwargs):
+        self.turn_analyzer = kwargs.get("turn_analyzer")
+
+class UserTurnStrategies:
+    def __init__(self, *args, **kwargs):
+        self.stop = kwargs.get("stop")
+
+class LLMUserAggregatorParams:
+    def __init__(self, *args, **kwargs):
+        self.user_turn_strategies = kwargs.get("user_turn_strategies")
+
+
 # Register all pipecat stubs before any test imports bot.py
 _PIPECAT_STUBS = {
     "pipecat": _make_module("pipecat"),
@@ -161,6 +183,7 @@ _PIPECAT_STUBS = {
     "pipecat.processors.aggregators.llm_response_universal": _make_module(
         "pipecat.processors.aggregators.llm_response_universal",
         LLMContextAggregatorPair=LLMContextAggregatorPair,
+        LLMUserAggregatorParams=LLMUserAggregatorParams,
     ),
     "pipecat.processors.filters": _make_module("pipecat.processors.filters"),
     "pipecat.processors.filters.identity_filter": _make_module(
@@ -183,6 +206,26 @@ _PIPECAT_STUBS = {
     "pipecat.services.elevenlabs": _make_module("pipecat.services.elevenlabs"),
     "pipecat.services.elevenlabs.tts": _make_module(
         "pipecat.services.elevenlabs.tts", ElevenLabsTTSService=ElevenLabsTTSService
+    ),
+    "pipecat.audio": _make_module("pipecat.audio"),
+    "pipecat.audio.turn": _make_module("pipecat.audio.turn"),
+    "pipecat.audio.turn.smart_turn": _make_module("pipecat.audio.turn.smart_turn"),
+    "pipecat.audio.turn.smart_turn.base_smart_turn": _make_module(
+        "pipecat.audio.turn.smart_turn.base_smart_turn",
+        SmartTurnParams=SmartTurnParams,
+    ),
+    "pipecat.audio.turn.smart_turn.local_smart_turn_v3": _make_module(
+        "pipecat.audio.turn.smart_turn.local_smart_turn_v3",
+        LocalSmartTurnAnalyzerV3=LocalSmartTurnAnalyzerV3,
+    ),
+    "pipecat.turns": _make_module("pipecat.turns"),
+    "pipecat.turns.user_stop": _make_module(
+        "pipecat.turns.user_stop",
+        TurnAnalyzerUserTurnStopStrategy=TurnAnalyzerUserTurnStopStrategy,
+    ),
+    "pipecat.turns.user_turn_strategies": _make_module(
+        "pipecat.turns.user_turn_strategies",
+        UserTurnStrategies=UserTurnStrategies,
     ),
     "pipecat.transports": _make_module("pipecat.transports"),
     "pipecat.transports.livekit": _make_module("pipecat.transports.livekit"),
