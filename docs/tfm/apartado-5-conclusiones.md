@@ -82,6 +82,23 @@ diálogo entero. El fondo del asunto es que el tutor trataba la transcripción c
 exactamente lo que yo había dicho. Ahora, cuando una palabra no encaja en el contexto, pregunta
 en lugar de corregir.
 
+### Una funcionalidad que no se ve no existe
+
+Desde las primeras versiones se podía tocar cualquier palabra del tutor para
+consultar su traducción. Está implementada, probada, con caché en el servidor para no
+pagar dos veces la misma consulta. Y llevaba semanas usando la aplicación sin
+descubrirla, hasta que propuse añadir «una especie de diccionario consultable» sin saber
+que ya lo tenía delante.
+
+La causa era de una sencillez incómoda: las palabras llevaban un subrayado punteado al
+33 % de opacidad sobre un fondo casi negro. Técnicamente la señal estaba ahí; para un
+ojo humano, no.
+
+Ninguna prueba automática podía detectar esto, porque el código funcionaba
+perfectamente. Y si el autor de la aplicación no encuentra una funcionalidad suya, nadie
+la va a encontrar. Lo arreglé subiendo el contraste del subrayado y, sobre todo,
+diciéndolo con palabras encima de la conversación, que era lo que faltaba de verdad.
+
 ### Dudar no es el caso raro: es el caso de uso
 
 La conclusión que más ha cambiado el producto es también la más simple. El sistema tomaba mis
