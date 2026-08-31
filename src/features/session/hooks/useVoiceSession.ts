@@ -72,6 +72,12 @@ export function useVoiceSession(): UseVoiceSessionReturn {
   const transcriptRef = useRef<TranscriptEntry[]>([]);
   const statusRef = useRef<SessionStatus>('idle');
   const tutorPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Each attempt gets a number. A failed connection leaves a Room that keeps
+  // retrying on its own, and its late callbacks used to write their errors over
+  // whatever session was running by then — a red banner on top of a working
+  // conversation. Anything asynchronous checks it still belongs to the current
+  // attempt before touching state.
+  const attemptRef = useRef(0);
 
   useEffect(() => {
     statusRef.current = status;
@@ -156,6 +162,18 @@ export function useVoiceSession(): UseVoiceSessionReturn {
   );
   const startSession = useCallback(
     async (config: SessionConfig) => {
+      // Abandon anything left over from a previous attempt before starting.
+      // Without this the old Room reconnects in the background for minutes.
+      const attempt = ++attemptRef.current;
+      stopTutorPolling();
+      if (roomRef.current) {
+        const stale = roomRef.current;
+        roomRef.current = null;
+        stale.disconnect().catch(() => {
+          // Already gone, or never connected. Nothing to salvage.
+        });
+      }
+
       setStatus('connecting');
       setError(null);
       setTranscript([]);
@@ -222,13 +240,23 @@ export function useVoiceSession(): UseVoiceSessionReturn {
           // Surface the error so the debug panel shows it.
           const msg = micErr instanceof Error ? micErr.message : String(micErr);
           console.error('[mic] setMicrophoneEnabled failed:', msg);
-          setError(`Microfone: ${msg}`);
+          if (attempt === attemptRef.current) setError(`Microfone: ${msg}`);
         }
 
         // 5. Wait for the tutor bot to join before marking the session active.
         waitForTutor(data.roomName, room);
       } catch (err) {
+        // A newer attempt is already running: its state is the one that counts.
+        if (attempt !== attemptRef.current) return;
+
         stopTutorPolling();
+        if (roomRef.current) {
+          const failed = roomRef.current;
+          roomRef.current = null;
+          failed.disconnect().catch(() => {
+            // Nothing to clean up; the connection never came up.
+          });
+        }
         const message =
           err instanceof Error ? err.message : 'Erro ao conectar';
         setError(message);
