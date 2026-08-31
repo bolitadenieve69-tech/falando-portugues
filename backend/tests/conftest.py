@@ -166,6 +166,16 @@ class LLMUserAggregatorParams:
         self.user_turn_strategies = kwargs.get("user_turn_strategies")
 
 
+
+class VADParams:
+    def __init__(self, *args, **kwargs):
+        self.stop_secs = kwargs.get("stop_secs")
+
+class SileroVADAnalyzer:
+    def __init__(self, *args, **kwargs):
+        self.params = kwargs.get("params")
+
+
 # Register all pipecat stubs before any test imports bot.py
 _PIPECAT_STUBS = {
     "pipecat": _make_module("pipecat"),
@@ -217,6 +227,13 @@ _PIPECAT_STUBS = {
     "pipecat.audio.turn.smart_turn.local_smart_turn_v3": _make_module(
         "pipecat.audio.turn.smart_turn.local_smart_turn_v3",
         LocalSmartTurnAnalyzerV3=LocalSmartTurnAnalyzerV3,
+    ),
+    "pipecat.audio.vad": _make_module("pipecat.audio.vad"),
+    "pipecat.audio.vad.silero": _make_module(
+        "pipecat.audio.vad.silero", SileroVADAnalyzer=SileroVADAnalyzer
+    ),
+    "pipecat.audio.vad.vad_analyzer": _make_module(
+        "pipecat.audio.vad.vad_analyzer", VADParams=VADParams
     ),
     "pipecat.turns": _make_module("pipecat.turns"),
     "pipecat.turns.user_stop": _make_module(

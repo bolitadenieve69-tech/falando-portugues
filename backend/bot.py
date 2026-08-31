@@ -28,6 +28,8 @@ from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
 from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
 from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
@@ -102,6 +104,11 @@ _TURN_PATIENCE_OVERRIDE = float(os.environ.get("TURN_PATIENCE_SECS", "0"))
 
 # The analyser cannot judge a segment longer than this.
 _MAX_TURN_PATIENCE_SECS = 8.0
+
+# How much silence makes the voice detector say the learner stopped speaking.
+# Deliberately short: it only hands over to the turn analyser, which is the one
+# that decides whether a pause means "finished" or "still thinking".
+_VAD_STOP_SECS = 0.2
 
 
 def turn_patience_for(level: str) -> float:
@@ -325,13 +332,23 @@ async def _run_pipeline(
         ]
     )
 
-    # Same Smart Turn v3 analyser Pipecat uses by default, but told how long a
-    # learner at this level may hesitate before we stop believing them.
+    # Turn taking needs two pieces, and the second is useless without the first.
+    #
+    # The LiveKit transport in Pipecat 1.1.0 carries no voice activity detector,
+    # so nothing emitted the speech-start and speech-stop events that wake the
+    # turn analyser. It loaded, it took our settings, and it never ran once:
+    # zero predictions across a whole conversation. Supplying a VAD here is what
+    # gives it something to listen to.
+    #
+    # With both in place the analyser judges whether the learner *sounds*
+    # finished. When they do the turn ends at once, so the long ceiling below is
+    # only ever spent on hesitation the model itself recognises as unfinished.
     patience = turn_patience_for(level)
     logger.info("[bot] turn patience: %.1fs (level %s)", patience, level)
     context_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
+            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=_VAD_STOP_SECS)),
             user_turn_strategies=UserTurnStrategies(
                 stop=[
                     TurnAnalyzerUserTurnStopStrategy(
