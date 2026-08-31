@@ -2,13 +2,12 @@
 
 ## Planteamiento
 
-La conversación hablada impone una restricción que condiciona todo el diseño: **si el tutor
-tarda demasiado en responder, deja de ser una conversación.** Por eso el sistema se definió
-desde el principio con un requisito no funcional explícito y medible: **la latencia percibida,
-desde que el usuario termina de hablar hasta que empieza a oír la respuesta, no debe superar
-los 2,5 segundos.**
+Hay una restricción que condiciona todo lo demás: si el tutor tarda demasiado en contestar, deja
+de ser una conversación. Por eso fijé desde el principio un requisito no funcional explícito y
+medible: la latencia percibida, desde que el usuario termina de hablar hasta que empieza a oír
+la respuesta, no debe pasar de 2,5 segundos.
 
-Ese presupuesto se repartió por etapas y es el criterio con el que se eligió cada componente:
+Repartí ese presupuesto por etapas, y con él en la mano elegí cada componente:
 
 | Etapa | Presupuesto |
 |---|---|
@@ -17,81 +16,82 @@ Ese presupuesto se repartió por etapas y es el criterio con el que se eligió c
 | Inicio del audio sintetizado | ≤ 800 ms |
 | **Total percibido** | **≤ 2.500 ms** |
 
+Conviene decir ya que este reparto resultó estar equivocado en una de sus partidas. Lo explico
+en el apartado 3, cuando aparecen las mediciones.
+
 ## Selección de herramientas y justificación
 
-**LiveKit (transporte de audio por WebRTC).** El audio viaja en ambos sentidos de forma continua
-y con cancelación de eco. Se descartó una arquitectura convencional de petición y respuesta
-sobre HTTP porque obliga a grabar, enviar, esperar y reproducir, un ciclo que hace imposible la
-sensación de diálogo. WebRTC es el estándar de las videollamadas precisamente por esto.
+**LiveKit (transporte de audio por WebRTC).** El audio viaja en los dos sentidos de forma
+continua y con cancelación de eco. Descarté la arquitectura clásica de petición y respuesta
+sobre HTTP porque obliga a grabar, enviar, esperar y reproducir; con ese ciclo no hay manera de
+que aquello parezca un diálogo. WebRTC es el estándar de las videollamadas precisamente por eso.
 
-**Deepgram, modelo nova-3 (voz a texto en streaming).** Transcribe mientras el usuario habla, en
-lugar de esperar a que termine. Se eligió por su detección de fin de intervención, que es la
-variable que más pesa en la latencia percibida: decidir demasiado pronto corta al usuario a
-media frase, y demasiado tarde introduce un silencio incómodo. El parámetro se ajustó a 1.000
-milisegundos tras las pruebas iniciales.
+**Deepgram, modelo nova-3 (voz a texto en streaming).** Transcribe mientras el usuario habla, sin
+esperar a que termine. Lo elegí sobre todo por su detección de fin de intervención, que creía
+que era la variable que más pesaba en la latencia: decidir demasiado pronto te corta a media
+frase, y demasiado tarde deja un silencio incómodo.
 
-**Claude Haiku 4.5 (el tutor).** Interpreta lo que dice el usuario, responde en portugués
-europeo y corrige los errores gramaticales. **Se eligió deliberadamente un modelo rápido y
-económico en lugar de uno mayor**: en una conversación hablada, medio segundo de espera
-perjudica más que una respuesta ligeramente menos elaborada. Es una decisión de diseño, no una
-limitación presupuestaria.
+**Claude Haiku 4.5 (el tutor).** Interpreta lo que dice el usuario, contesta en portugués europeo
+y corrige los errores gramaticales. Escogí a propósito un modelo rápido y barato en lugar de uno
+mayor: hablando, medio segundo de espera molesta más de lo que ayuda una respuesta un poco más
+elaborada. Es una decisión de diseño y no una limitación de presupuesto.
 
-**ElevenLabs, modelo multilingüe (texto a voz).** Genera la voz del tutor. Es de los pocos
-proveedores con voces auténticas de **portugués de Portugal**, no de Brasil, lo cual es un
-requisito irrenunciable del producto. Se emplea la variante de streaming por WebSocket, que
-empieza a emitir audio con el primer fragmento sintetizado en lugar de esperar a la frase
-completa.
+**ElevenLabs, modelo multilingüe (texto a voz).** Pone la voz del tutor. Es de los pocos
+proveedores con voces auténticas de portugués de Portugal y no de Brasil, que para este producto
+es innegociable. Uso la variante de streaming por WebSocket, que empieza a emitir en cuanto
+tiene el primer fragmento sintetizado en vez de esperar a la frase entera.
 
-**Pipecat (orquestación del pipeline).** Encadena los componentes anteriores en un flujo de
-fotogramas de audio y texto, gestionando el paso de una etapa a la siguiente sin acumular
-latencia.
+**Pipecat (orquestación del pipeline).** Encadena todo lo anterior en un flujo de fotogramas de
+audio y texto, pasando de una etapa a la siguiente sin ir acumulando latencia por el camino.
 
 **FastAPI y SQLite (servidor y persistencia).** Exponen el contrato con la aplicación móvil
-(crear sesión, autenticación, historial, traducción de palabras) y almacenan usuarios y sesiones.
+—crear sesión, autenticación, historial, traducción de palabras— y guardan usuarios y sesiones.
 
 **React Native con Expo (aplicación móvil).** Un solo código para iOS y Android, con acceso
 nativo al micrófono y al SDK de LiveKit.
 
 ## Metodología
 
-**1. El pipeline de voz.** El flujo de cada turno es: el micrófono captura la voz y la envía por
+**1. El pipeline de voz.** Cada turno funciona así: el micrófono captura la voz y la manda por
 WebRTC; Deepgram transcribe en streaming y detecta el fin de la intervención; el texto se añade
-al historial y se envía al modelo; la respuesta se sintetiza en voz y vuelve al usuario por el
-mismo canal. En paralelo, un canal de datos publica las transcripciones para mostrarlas en
-pantalla.
+al historial y va al modelo; la respuesta se sintetiza en voz y vuelve al usuario por el mismo
+canal. En paralelo, un canal de datos publica las transcripciones para pintarlas en pantalla.
 
-**2. Diseño del prompt del tutor.** El comportamiento del tutor se define en un *system prompt*
-parametrizado por **nivel** (A1 a C2, según el Marco Común Europeo de Referencia) y por **tema**
-de conversación. Incorpora tres restricciones derivadas del medio:
+**2. Diseño del prompt del tutor.** El comportamiento del tutor lo define un *system prompt*
+parametrizado por nivel (A1 a C2, según el Marco Común Europeo de Referencia) y por tema de
+conversación. Le puse tres restricciones que salen del medio, no del contenido:
 
-- **Máximo dos frases por respuesta.** El texto se va a leer en voz alta: una respuesta larga
-  rompe el ritmo del diálogo y multiplica el coste de síntesis.
+- **Máximo dos frases por respuesta.** Todo esto se va a leer en voz alta, y una respuesta larga
+  rompe el ritmo del diálogo además de multiplicar el coste de síntesis.
 - **Texto plano, sin formato.** El sintetizador leería los símbolos de marcado en voz alta.
 - **Formato fijo de corrección.** El tutor antepone las correcciones gramaticales con una marca
-  reconocible, que el servidor separa del resto de la respuesta y envía como campo
-  independiente. Así la aplicación puede mostrarla de forma diferenciada.
+  reconocible; el servidor la separa del resto de la respuesta y la manda como campo aparte,
+  para que la aplicación pueda mostrarla de otra forma. Esta pieza, aparentemente menor, me dio
+  después dos disgustos que cuento en el apartado 5.
 
 **3. Arquitectura multiidioma: cada idioma es una configuración, no una copia del proyecto.**
-Toda la información específica de un idioma (prompt del tutor, instrucciones por nivel,
-etiquetas de tema, código de reconocimiento de voz y voces disponibles) se agrupa en un perfil.
-Añadir un idioma consiste en escribir ese perfil y registrarlo, sin tocar el motor. Portugués
-está operativo; francés, italiano e inglés tienen su perfil completo a la espera de asignarles
-voces.
+Agrupo en un perfil todo lo que cambia de un idioma a otro: prompt del tutor, instrucciones por
+nivel, etiquetas de tema, código de reconocimiento de voz y voces disponibles. Añadir un idioma
+es escribir ese perfil y registrarlo, sin tocar el motor. Portugués está operativo; francés,
+italiano e inglés tienen el perfil completo y esperan a que les asigne voces.
 
 **4. Control de concurrencia.** Si el usuario interrumpe mientras el tutor está generando, las
-peticiones podrían solaparse y provocar errores de límite de tasa en la API del modelo. Se
-implementó un mecanismo que serializa las llamadas y conserva únicamente la intervención más
-reciente, que es la que refleja la intención real del usuario.
+peticiones se solapan y la API del modelo devuelve errores de límite de tasa. Puse un mecanismo
+que serializa las llamadas y se queda solo con la intervención más reciente, que es la que
+refleja lo que el usuario quiere decir de verdad.
 
-**5. Instrumentación desde el diseño.** El presupuesto de latencia no sirve de nada si no se
-mide. El sistema registra, en cada turno hablado, las marcas de tiempo de cada etapa, lo que
-permite contrastar el objetivo declarado con el comportamiento real y atribuir un turno lento
-al componente concreto que lo causó.
+**5. Instrumentación desde el diseño.** Un presupuesto de latencia que no se mide no sirve para
+nada. El sistema registra, en cada turno hablado, las marcas de tiempo de cada etapa. Eso me
+permite contrastar el objetivo con el comportamiento real y, cuando un turno sale lento, saber
+qué componente concreto lo causó.
 
 ## Nota sobre el método de desarrollo
 
-El proyecto se desarrolló con asistencia de varias herramientas de inteligencia artificial
-trabajando sobre el mismo repositorio, coordinadas mediante un documento de traspaso que permite
-a cualquiera de ellas retomar el trabajo sin contexto previo. Este enfoque, además de ser el
-objeto de estudio de la formación, produjo un hallazgo relevante que se detalla en las
-conclusiones: una de las herramientas detectó un fallo de seguridad en código generado por otra.
+Trabajé con varias herramientas de inteligencia artificial sobre el mismo repositorio,
+coordinándolas mediante un documento de traspaso que permite a cualquiera de ellas retomar el
+trabajo sin contexto previo. Yo dirigí el desarrollo, tomé las decisiones de producto y probé
+personalmente cada versión.
+
+Menciono el método porque es el objeto mismo de esta formación, y porque dio un resultado que
+merece la pena: una de las herramientas encontró un fallo de seguridad en código escrito por
+otra. Lo detallo en las conclusiones.
