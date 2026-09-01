@@ -10,9 +10,8 @@ Entrega por correo a **trabajofinal@rackslabs.com**. Dos piezas: **un documento*
 apartados y **un vídeo** obligatorio mostrando el proyecto en acción y explicándolo.
 Calificación APTO / NO APTO. La tasa del certificado se comunica una vez aprobado.
 
-**Pendiente de decidir:** Racks se reserva difundir públicamente la memoria. Si no se quiere,
-hay que pedirlo **por escrito antes de entregar**. La propiedad del proyecto (app y código)
-es del alumno en cualquier caso.
+**Decidido (01-09-2026):** el autor acepta que Racks difunda públicamente la memoria. No hay
+que hacer nada. La propiedad del proyecto (app y código) sigue siendo suya en cualquier caso.
 
 ## Documento
 
