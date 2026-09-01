@@ -82,7 +82,22 @@ usuario planteó un rediseño visual completo; se recomendó grabar el vídeo an
 **Tamaño del emblema.** A 96 px el anillo de texto del logo apenas se lee. Queda a decisión del
 usuario dejarlo así o subirlo a ~130 px.
 
-## Siguiente paso
+## Plan del 2 de septiembre
 
-Recortar el apartado 4 y **grabar el vídeo** siguiendo el guion. Es lo único que separa el
-trabajo de estar listo para entregar.
+Antes de entregar:
+
+1. **Grabar el vídeo** siguiendo `trabajo/guion-video.md`. Es lo único obligatorio que falta.
+2. **Revisión de seguridad** del servidor y de la aplicación.
+3. **Repaso final**: buscar cualquier cosa que quede coja antes de enviar. Conviene revisar la
+   memoria buscando cifras que se contradigan entre apartados; ya apareció un caso (el
+   recuento de pruebas figuraba como 216, 273 y 286 en sitios distintos; las reales son 293).
+
+Después de entregar, en la siguiente versión:
+
+4. **Activar el francés.** El perfil está escrito; faltan identificadores de voz reales y una
+   revisión del prompt por un hablante nativo.
+5. **Guardar las correcciones del tutor** para poder repasarlas. Hoy sólo se almacena cuántas
+   hubo, no cuáles. Requiere cambiar `SessionRecord`, la subida al servidor y el historial.
+6. **Diccionario personal**: guardar las palabras y expresiones consultadas.
+
+El apartado 4 ya está terminado: no hay nada que recortar.
