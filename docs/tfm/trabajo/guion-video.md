@@ -138,7 +138,7 @@ Y ahora **lo que de verdad demuestra método**, que es reconocer un error:
 
 ## Escena 8 — Cierre (30 s)
 
-> El proyecto tiene 286 pruebas automáticas y se despliega con Docker en un servidor propio.
+> El proyecto tiene 293 pruebas automáticas y se despliega con Docker en un servidor propio.
 > Está validado con un único usuario, que soy yo, así que mide cómo se comporta el sistema y no
 > lo que aprende nadie: para eso haría falta un estudio con varios estudiantes, que es el
 > siguiente paso.

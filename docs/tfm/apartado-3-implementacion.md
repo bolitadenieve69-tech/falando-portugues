@@ -21,7 +21,7 @@ una sola sesión, todos de configuración, versiones o permisos, ninguno de arqu
 ser medir, encontrar el fallo, repararlo y volver a medir. Los tres intentos que costó arreglar
 la toma de turno, que cuento más abajo, son el mejor ejemplo de para qué sirve esto.
 
-El proyecto tiene hoy **273 pruebas automáticas** (194 del servidor y 79 de la aplicación) que
+El proyecto tiene hoy **293 pruebas automáticas** (198 del servidor y 95 de la aplicación) que
 se ejecutan en integración continua con cada cambio.
 
 ## Métricas de éxito
