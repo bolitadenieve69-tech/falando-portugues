@@ -56,13 +56,6 @@ MAX_SESSION_SECONDS = int(os.environ.get("MAX_SESSION_MINUTES", "30")) * 60
 # vs. voice quality for PT-PT before committing to a default.
 TTS_MODEL = os.environ.get("ELEVENLABS_TTS_MODEL", "eleven_multilingual_v2")
 
-# How much silence ends the learner's turn. A learner pauses to hunt for a word
-# far more than a native speaker does, and at the original 1000 ms a third of the
-# turns in a real session were cut mid-sentence: the fragment triggered a reply
-# that was then cancelled by the rest of the utterance, so the learner heard
-# nothing. Lower levels get more thinking time. The cost is that the tutor waits
-# longer before answering, which is the better trade: being interrupted mid
-# sentence is worse than a slightly slower reply.
 # How long Deepgram waits before calling a *transcript* final. This is a
 # transcription setting and nothing more: it does not decide when the learner's
 # turn is over. That decision belongs to the turn analyser below.
@@ -104,6 +97,28 @@ _TURN_PATIENCE_OVERRIDE = float(os.environ.get("TURN_PATIENCE_SECS", "0"))
 
 # The analyser cannot judge a segment longer than this.
 _MAX_TURN_PATIENCE_SECS = 8.0
+
+# Whether the words spoken in a conversation reach the server log.
+#
+# Someone practising a language talks about their job, their family or their
+# health. That content used to be written in full to the container log, where it
+# stays for the life of the process and is readable by anyone with server
+# access. It is off by default and turned on deliberately when debugging.
+_LOG_TRANSCRIPTS = os.environ.get("LOG_TRANSCRIPTS", "").lower() in ("1", "true", "yes")
+
+
+def loggable_transcript(text: str) -> str:
+    """What may be written to the log for a spoken turn.
+
+    With logging off, the length is kept: it is enough to follow turn taking,
+    spot discarded replies and measure timings, which is what the log is for.
+    """
+    if _LOG_TRANSCRIPTS:
+        return text
+    if not text:
+        return "(vazio)"
+    return f"({len(text)} caracteres)"
+
 
 # How much silence makes the voice detector say the learner stopped speaking.
 # Deliberately short: it only hands over to the turn analyser, which is the one
@@ -162,7 +177,7 @@ class TranscriptPublisher(IdentityFilter):
             if isinstance(frame, TranscriptionFrame):
                 text = (frame.text or "").strip()
                 if text:
-                    loguru_logger.info("[transcript] user: {}", text)
+                    loguru_logger.info("[transcript] user: {}", loggable_transcript(text))
                     await self._publish(text)
             elif isinstance(frame, UserStoppedSpeakingFrame):
                 loguru_logger.info("[transcript] user turn ended")
@@ -177,7 +192,7 @@ class TranscriptPublisher(IdentityFilter):
                 full = "".join(self._buffer).strip()
                 self._buffer = []
                 if full:
-                    loguru_logger.info("[transcript] tutor: {}", full)
+                    loguru_logger.info("[transcript] tutor: {}", loggable_transcript(full))
                     correction, clean = parse_correction(full)
                     if not clean:
                         # Correction-only reply: keep the original text and drop

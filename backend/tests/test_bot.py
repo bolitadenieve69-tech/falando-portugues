@@ -535,3 +535,39 @@ class TestTurnPatienceIsInTheRightLayer:
         from bot import endpointing_for
 
         assert endpointing_for("B1") <= 2500
+
+
+class TestConversationPrivacyInLogs:
+    """Lo que se dice en una conversación no debe quedar en los registros.
+
+    Cada frase del alumno y del tutor se escribía entera en el registro del
+    contenedor, donde permanece durante toda la vida del proceso y la lee
+    cualquiera con acceso al servidor. Es contenido personal: alguien
+    practicando un idioma habla de su trabajo, su familia o su salud.
+
+    Para depurar hace falta poder verlo, así que se conserva tras una variable
+    de entorno que por defecto está apagada.
+    """
+
+    def test_hidden_by_default(self):
+        from bot import loggable_transcript
+
+        assert "Alentejo" not in loggable_transcript("Conheço bem o Alentejo")
+
+    def test_keeps_the_shape_so_turn_taking_can_be_diagnosed(self):
+        """El tamaño y la existencia del turno siguen siendo visibles."""
+        from bot import loggable_transcript
+
+        frase = "Conheço bem o Alentejo"
+        assert str(len(frase)) in loggable_transcript(frase)
+
+    def test_shown_when_explicitly_enabled(self):
+        import bot
+
+        with patch.object(bot, "_LOG_TRANSCRIPTS", True):
+            assert bot.loggable_transcript("Olá Angel") == "Olá Angel"
+
+    def test_empty_text_says_so_rather_than_reporting_zero(self):
+        from bot import loggable_transcript
+
+        assert loggable_transcript("") == "(vazio)"

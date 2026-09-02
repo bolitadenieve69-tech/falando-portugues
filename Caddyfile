@@ -1,4 +1,17 @@
 37-27-196-137.nip.io {
   encode gzip zstd
+
+  header {
+    # Un año de HTTPS obligatorio. Sin esto, la primera petición de un cliente
+    # puede salir en claro antes de la redirección, y ahí viaja su token.
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # La API sólo devuelve JSON: que nadie lo interprete como otra cosa.
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "no-referrer"
+    # El servidor no tiene por qué anunciar qué es ni qué versión corre.
+    -Server
+  }
+
   reverse_proxy backend:8000
 }
