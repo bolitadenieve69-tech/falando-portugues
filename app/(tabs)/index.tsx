@@ -14,6 +14,7 @@ import * as SecureStore from 'expo-secure-store';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel, ConversationTopic } from '../../src/features/session/types';
+import { summariseLastConversation } from '../../src/features/session/utils/lastConversation';
 import { loadPreferences, savePreferences } from '../../src/services/preferences';
 import { voiceName } from '../../src/constants/voices';
 import { loadSessions, computeStats } from '../../src/services/history';
@@ -48,6 +49,17 @@ function greeting(): string {
   if (h < 12) return 'Bom dia';
   if (h < 18) return 'Boa tarde';
   return 'Boa noite';
+}
+
+/** "Hoje", "Ontem" o la fecha corta. Lo que sitúa una conversación en el tiempo. */
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Hoje';
+  if (d.toDateString() === yesterday.toDateString()) return 'Ontem';
+  return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
 }
 
 export default function HomeScreen() {
@@ -104,7 +116,8 @@ export default function HomeScreen() {
   }
 
   const initial = username ? username[0].toUpperCase() : '?';
-  const lastExcerpt = lastSession?.excerpt ?? 'Olá! Bem-vindo, tudo bem contigo?';
+  const topicLabels = Object.fromEntries(TOPICS.map((t) => [t.key, t.label]));
+  const lastConversation = summariseLastConversation(lastSession, topicLabels, formatDate);
 
   return (
     <View style={styles.root}>
@@ -157,10 +170,17 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
-          <View style={styles.lastConversationCard}>
-            <Text style={styles.lastConversationLabel}>ÚLTIMA CONVERSA</Text>
-            <Text style={styles.lastConversationText} numberOfLines={2}>"{lastExcerpt}"</Text>
-          </View>
+          {lastConversation && (
+            <View style={styles.lastConversationCard}>
+              <Text style={styles.lastConversationLabel}>ÚLTIMA CONVERSA</Text>
+              <Text style={styles.lastConversationText}>{lastConversation.headline}</Text>
+              {lastConversation.quote && (
+                <Text style={styles.lastConversationQuote} numberOfLines={2}>
+                  "{lastConversation.quote}"
+                </Text>
+              )}
+            </View>
+          )}
         </View>
 
         <LevelAssessmentCard
@@ -403,6 +423,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     color: Colors.onSurface,
+  },
+  lastConversationQuote: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.onSurfaceVariant,
+    marginTop: 6,
   },
 
   heroCard: {
