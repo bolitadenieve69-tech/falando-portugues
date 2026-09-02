@@ -14,6 +14,9 @@ import * as SecureStore from 'expo-secure-store';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, BorderRadius, Spacing } from '../../src/constants/theme';
 import type { UserLevel, ConversationTopic } from '../../src/features/session/types';
+import { fetchLanguages } from '../../src/services/api';
+import { LanguagePicker } from '../../src/features/session/components/LanguagePicker';
+import { toLanguageOptions, shouldShowPicker } from '../../src/features/session/utils/languageChoice';
 import { summariseLastConversation } from '../../src/features/session/utils/lastConversation';
 import { loadPreferences, savePreferences } from '../../src/services/preferences';
 import { voiceName } from '../../src/constants/voices';
@@ -72,6 +75,10 @@ export default function HomeScreen() {
   const [totalSessions, setTotalSessions] = useState(0);
   const [username, setUsername] = useState('');
   const [lastSession, setLastSession] = useState<SessionRecord | null>(null);
+  const [languageOptions, setLanguageOptions] = useState<
+    ReturnType<typeof toLanguageOptions>
+  >([]);
+  const [selectedLanguage, setSelectedLanguage] = useState('pt-PT');
 
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -87,6 +94,12 @@ export default function HomeScreen() {
       setLastSession(sessions[0] ?? null);
     });
     SecureStore.getItemAsync('auth_username').then((name) => setUsername(name ?? ''));
+    // Los idiomas los declara el servidor, no la app: así activar uno nuevo no
+    // obliga a publicar una versión. Si no responde, el selector no aparece y
+    // la pantalla queda como estaba.
+    fetchLanguages()
+      .then((langs) => setLanguageOptions(langs ? toLanguageOptions(langs) : []))
+      .catch(() => setLanguageOptions([]));
   }, []);
 
   useEffect(() => {
@@ -116,6 +129,7 @@ export default function HomeScreen() {
   }
 
   const initial = username ? username[0].toUpperCase() : '?';
+  const showLanguages = shouldShowPicker(languageOptions);
   const topicLabels = Object.fromEntries(TOPICS.map((t) => [t.key, t.label]));
   const lastConversation = summariseLastConversation(lastSession, topicLabels, formatDate);
 
@@ -212,6 +226,20 @@ export default function HomeScreen() {
           </View>
 
         </View>
+
+        {showLanguages && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Idioma</Text>
+              <Text style={styles.sectionBadge}>PLATAFORMA</Text>
+            </View>
+            <LanguagePicker
+              options={languageOptions}
+              selected={selectedLanguage}
+              onSelect={setSelectedLanguage}
+            />
+          </View>
+        )}
 
         {/* Topics */}
         <View style={styles.section}>
