@@ -1,0 +1,73 @@
+<title>Arquitectura</title>
+<style>
+  :root {
+    --fondo: #080c09;
+    --oro: #f1aa4f;
+    --verde: #0b7a43;
+    --rojo: #d5342f;
+    --texto: #e8e4dc;
+    --tenue: #7d8579;
+  }
+  body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 70px;
+  }
+  h1 {
+    font-size: 46px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--tenue);
+    margin: 0;
+  }
+  .cadena { display: flex; align-items: stretch; gap: 0; }
+  .pieza {
+    width: 250px;
+    padding: 34px 20px;
+    border: 1px solid rgba(241,170,79,.28);
+    border-radius: 18px;
+    background: rgba(241,170,79,.05);
+    text-align: center;
+  }
+  .pieza .nombre { font-size: 34px; font-weight: 600; color: var(--oro); }
+  .pieza .papel { font-size: 22px; color: var(--tenue); margin-top: 12px; line-height: 1.4; }
+  .flecha {
+    display: flex; align-items: center;
+    font-size: 34px; color: rgba(241,170,79,.45);
+    padding: 0 18px;
+  }
+  .pie {
+    font-size: 26px;
+    color: var(--tenue);
+    max-width: 1250px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .pie b { color: var(--texto); font-weight: 600; }
+</style>
+
+<h1>Una tubería de cinco piezas</h1>
+
+<div class="cadena">
+  <div class="pieza"><div class="nombre">LiveKit</div><div class="papel">transporta el audio</div></div>
+  <div class="flecha">→</div>
+  <div class="pieza"><div class="nombre">Deepgram</div><div class="papel">transcribe mientras hablas</div></div>
+  <div class="flecha">→</div>
+  <div class="pieza"><div class="nombre">Claude Haiku</div><div class="papel">hace de tutor</div></div>
+  <div class="flecha">→</div>
+  <div class="pieza"><div class="nombre">ElevenLabs</div><div class="papel">pone la voz</div></div>
+</div>
+
+<div class="pie">
+  <b>Pipecat</b> orquesta el conjunto. Cada idioma es un fichero de configuración,
+  no una copia del proyecto.
+</div>

@@ -1,0 +1,74 @@
+<title>Mediciones</title>
+<style>
+  :root {
+    --fondo: #080c09;
+    --oro: #f1aa4f;
+    --texto: #e8e4dc;
+    --tenue: #7d8579;
+    --bien: #4caf7d;
+    --mal: #d5342f;
+  }
+  body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 46px;
+  }
+  h1 {
+    font-size: 44px; font-weight: 600; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--tenue); margin: 0;
+  }
+  .sub { font-size: 26px; color: var(--tenue); margin-top: -30px; }
+  table { border-collapse: collapse; font-size: 30px; }
+  th {
+    font-size: 22px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--tenue); font-weight: 500;
+    padding: 0 40px 22px; text-align: right;
+  }
+  th:first-child { text-align: left; }
+  td { padding: 20px 40px; text-align: right; border-top: 1px solid rgba(232,228,220,.10); }
+  td:first-child { text-align: left; color: var(--tenue); }
+  .destacada td { font-weight: 600; font-size: 34px; color: var(--texto); }
+  .destacada td:first-child { color: var(--texto); }
+  .no { color: var(--mal); font-weight: 600; }
+  .si { color: var(--bien); font-weight: 600; }
+  .cifra { color: var(--oro); }
+  .pie {
+    font-size: 27px; color: var(--tenue); max-width: 1200px;
+    text-align: center; line-height: 1.6; margin-top: 14px;
+  }
+  .pie b { color: var(--texto); font-weight: 600; }
+</style>
+
+<h1>El sistema se mide a sí mismo</h1>
+<div class="sub">170 turnos hablados · 15 sesiones</div>
+
+<table>
+  <tr>
+    <th>Etapa</th><th>Mediana</th><th>P90</th><th>Objetivo</th><th></th>
+  </tr>
+  <tr>
+    <td>Transcripción → primer token</td>
+    <td class="cifra">1.457 ms</td><td>2.034 ms</td><td>500 ms</td><td class="no">no</td>
+  </tr>
+  <tr>
+    <td>Primer token → primer audio</td>
+    <td class="cifra">489 ms</td><td>1.195 ms</td><td>800 ms</td><td class="si">sí</td>
+  </tr>
+  <tr class="destacada">
+    <td>Latencia percibida total</td>
+    <td class="cifra">1.593 ms</td><td>2.810 ms</td><td>2.500 ms</td><td class="si">sí</td>
+  </tr>
+</table>
+
+<div class="pie">
+  El <b>86 %</b> de los turnos entra en el presupuesto. Pero el reconocimiento de voz
+  termina <b>350 ms antes</b> de que se cierre el turno: no consume presupuesto, lo devuelve.
+</div>

@@ -63,3 +63,7 @@ falando.db
 # Jest coverage output
 mobile/coverage/
 .superpowers/
+
+# Material en bruto del vídeo: pesa cientos de MB y no aporta al repositorio.
+docs/tfm/video/tomas/
+docs/tfm/video/trabajo/

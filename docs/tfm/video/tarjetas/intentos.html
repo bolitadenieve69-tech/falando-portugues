@@ -1,0 +1,80 @@
+<title>Tres intentos</title>
+<style>
+  :root {
+    --fondo: #080c09;
+    --oro: #f1aa4f;
+    --texto: #e8e4dc;
+    --tenue: #7d8579;
+    --bien: #4caf7d;
+    --mal: #d5342f;
+  }
+  body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 44px;
+  }
+  h1 {
+    font-size: 44px; font-weight: 600; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--tenue); margin: 0;
+  }
+  .intentos { display: flex; flex-direction: column; gap: 26px; }
+  .intento {
+    display: flex; align-items: center; gap: 34px;
+    width: 1300px; padding: 26px 38px;
+    border-left: 4px solid var(--mal);
+    background: rgba(232,228,220,.03);
+    border-radius: 0 14px 14px 0;
+  }
+  .intento.ok { border-left-color: var(--bien); }
+  .n { font-size: 40px; font-weight: 600; color: var(--tenue); width: 44px; }
+  .qué { font-size: 31px; flex: 1; line-height: 1.4; }
+  .qué small { display: block; font-size: 24px; color: var(--tenue); margin-top: 8px; }
+  .veredicto { font-size: 26px; font-weight: 600; color: var(--mal); width: 220px; text-align: right; }
+  .intento.ok .veredicto { color: var(--bien); }
+  pre {
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 25px; line-height: 1.7; color: var(--tenue);
+    background: rgba(0,0,0,.4); border-radius: 14px;
+    padding: 26px 38px; margin: 0;
+  }
+  pre b { color: var(--oro); font-weight: 600; }
+  pre .cero { color: var(--mal); font-weight: 600; }
+</style>
+
+<h1>Arreglar las interrupciones costó tres intentos</h1>
+
+<div class="intentos">
+  <div class="intento">
+    <div class="n">1</div>
+    <div class="qué">Subir un parámetro de la transcripción
+      <small>La capa equivocada: eso decide cuándo un transcrito es definitivo, no cuándo termina el turno</small>
+    </div>
+    <div class="veredicto">sin efecto</div>
+  </div>
+  <div class="intento">
+    <div class="n">2</div>
+    <div class="qué">Configurar el modelo de toma de turno
+      <small>La capa correcta, pero la pieza estaba muerta</small>
+    </div>
+    <div class="veredicto">sin efecto</div>
+  </div>
+  <div class="intento ok">
+    <div class="n">3</div>
+    <div class="qué">Darle un detector de voz que lo despertara
+      <small>Estaba cargado y ciego</small>
+    </div>
+    <div class="veredicto">funcionó</div>
+  </div>
+</div>
+
+<pre>Loading Local Smart Turn v3 model...     <b>← cargado</b>
+[bot] turn patience: 5.0s (level B1)     <b>← con mi configuración</b>
+End of Turn result: ...                  <span class="cero">← 0 veces</span></pre>
