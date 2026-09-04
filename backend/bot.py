@@ -36,7 +36,10 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 from pipecat.processors.filters.identity_filter import IdentityFilter
-from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
+from pipecat.turns.user_stop import (
+    SpeechTimeoutUserTurnStopStrategy,
+    TurnAnalyzerUserTurnStopStrategy,
+)
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.anthropic.llm import AnthropicLLMService
@@ -132,6 +135,26 @@ def turn_patience_for(level: str) -> float:
         level, _TURN_PATIENCE_SECS_BY_LEVEL["B1"]
     )
     return min(value, _MAX_TURN_PATIENCE_SECS)
+
+
+# How much longer than the analyser the safety net waits before ending the turn
+# on its own. Long enough that it only ever fires when the analyser has failed.
+_SAFETY_NET_MARGIN_SECS = 2.0
+
+
+def turn_safety_net_for(level: str) -> float:
+    """Seconds after which the turn ends regardless of what the analyser thinks.
+
+    The analyser only ends a turn when it judges the learner to have finished.
+    When it never does, nothing else ends it: recorded live on 2026-09-04, the
+    learner interrupted the tutor, spoke, and the analyser timed out still
+    judging the sentence unfinished. The turn stayed open and the tutor went
+    silent for good — no error, no exception, just no reply ever again.
+
+    This is the floor under that: whatever the model believes, the learner gets
+    an answer.
+    """
+    return turn_patience_for(level) + _SAFETY_NET_MARGIN_SECS
 
 
 def utterance_end_for(level: str) -> int:
@@ -359,18 +382,27 @@ async def _run_pipeline(
     # finished. When they do the turn ends at once, so the long ceiling below is
     # only ever spent on hesitation the model itself recognises as unfinished.
     patience = turn_patience_for(level)
-    logger.info("[bot] turn patience: %.1fs (level %s)", patience, level)
+    logger.info(
+        "[bot] turn patience: %.1fs, safety net: %.1fs (level %s)",
+        patience, turn_safety_net_for(level), level,
+    )
     context_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=_VAD_STOP_SECS)),
             user_turn_strategies=UserTurnStrategies(
+                # Cualquiera de las dos puede cerrar el turno; gana la primera.
+                # El analizador lo cierra en cuanto el alumno suena a terminado,
+                # y la segunda está debajo por si aquel no se decide nunca.
                 stop=[
                     TurnAnalyzerUserTurnStopStrategy(
                         turn_analyzer=LocalSmartTurnAnalyzerV3(
                             params=SmartTurnParams(stop_secs=patience),
                         ),
-                    )
+                    ),
+                    SpeechTimeoutUserTurnStopStrategy(
+                        user_speech_timeout=turn_safety_net_for(level),
+                    ),
                 ],
             ),
         ),

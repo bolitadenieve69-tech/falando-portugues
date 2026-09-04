@@ -153,6 +153,10 @@ class LocalSmartTurnAnalyzerV3:
     def __init__(self, *args, **kwargs):
         self.params = kwargs.get("params")
 
+class SpeechTimeoutUserTurnStopStrategy:
+    def __init__(self, *args, **kwargs):
+        self.user_speech_timeout = kwargs.get("user_speech_timeout")
+
 class TurnAnalyzerUserTurnStopStrategy:
     def __init__(self, *args, **kwargs):
         self.turn_analyzer = kwargs.get("turn_analyzer")
@@ -239,6 +243,7 @@ _PIPECAT_STUBS = {
     "pipecat.turns.user_stop": _make_module(
         "pipecat.turns.user_stop",
         TurnAnalyzerUserTurnStopStrategy=TurnAnalyzerUserTurnStopStrategy,
+        SpeechTimeoutUserTurnStopStrategy=SpeechTimeoutUserTurnStopStrategy,
     ),
     "pipecat.turns.user_turn_strategies": _make_module(
         "pipecat.turns.user_turn_strategies",

@@ -571,3 +571,34 @@ class TestConversationPrivacyInLogs:
         from bot import loggable_transcript
 
         assert loggable_transcript("") == "(vazio)"
+
+
+class TestTurnSafetyNet:
+    """El turno tiene que cerrarse siempre, aunque el modelo nunca se decida.
+
+    Observado en grabación real el 04-09-2026: el alumno interrumpe al tutor,
+    habla, y el analizador semántico agota su espera dictaminando que la frase
+    suena inacabada. Como esa estrategia sólo cierra el turno cuando el modelo
+    dice COMPLETE, nadie lo cerró y el tutor se quedó mudo para siempre. No hubo
+    error ni excepción: sencillamente dejó de responder.
+
+    Una segunda estrategia por tiempo cierra el turno cuando la primera falla.
+    """
+
+    def test_always_waits_longer_than_the_analyser(self):
+        """Si saltara antes, se comería las dudas que el analizador respeta."""
+        from bot import turn_patience_for, turn_safety_net_for
+
+        for level in ["A1", "A2", "B1", "B2", "C1", "C2"]:
+            assert turn_safety_net_for(level) > turn_patience_for(level), level
+
+    def test_never_leaves_the_learner_waiting_forever(self):
+        from bot import turn_safety_net_for
+
+        for level in ["A1", "A2", "B1", "B2", "C1", "C2"]:
+            assert turn_safety_net_for(level) <= 12.0, level
+
+    def test_unknown_level_falls_back_to_b1(self):
+        from bot import turn_safety_net_for
+
+        assert turn_safety_net_for("Z9") == turn_safety_net_for("B1")
