@@ -82,22 +82,42 @@ usuario planteó un rediseño visual completo; se recomendó grabar el vídeo an
 **Tamaño del emblema.** A 96 px el anillo de texto del logo apenas se lee. Queda a decisión del
 usuario dejarlo así o subirlo a ~130 px.
 
-## Plan del 2 de septiembre
+## Estado al 4 de septiembre
 
-Antes de entregar:
+**La memoria está terminada.** Los cinco apartados, montados en un solo documento en
+`entrega/memoria-falando-portugues.md`.
 
-1. **Grabar el vídeo** siguiendo `trabajo/guion-video.md`. Es lo único obligatorio que falta.
-2. **Revisión de seguridad** del servidor y de la aplicación.
-3. **Repaso final**: buscar cualquier cosa que quede coja antes de enviar. Conviene revisar la
-   memoria buscando cifras que se contradigan entre apartados; ya apareció un caso (el
-   recuento de pruebas figuraba como 216, 273 y 286 en sitios distintos; las reales son 293).
+**El vídeo está montado**: `video/falando-portugues-demo.mp4`, 7 min 17 s. Voz grabada aparte
+por el autor, planos del simulador, tarjetas dibujadas para los bloques técnicos y la
+conversación con su propio sonido. Se rehace con `python3 docs/tfm/video/montar.py`.
 
-Después de entregar, en la siguiente versión:
+**Servidor al día**, con el arreglo del bloqueo desplegado y verificado (paciencia 5,0 s, red
+de seguridad 7,0 s).
 
-4. **Activar el francés.** El perfil está escrito; faltan identificadores de voz reales y una
-   revisión del prompt por un hablante nativo.
-5. **Guardar las correcciones del tutor** para poder repasarlas. Hoy sólo se almacena cuántas
-   hubo, no cuáles. Requiere cambiar `SessionRecord`, la subida al servidor y el historial.
-6. **Diccionario personal**: guardar las palabras y expresiones consultadas.
+### Lo único pendiente
 
-El apartado 4 ya está terminado: no hay nada que recortar.
+**Regrabar la conversación con el tutor.** La toma actual tiene seis segundos de silencio
+entre los segundos 32 y 41 —el sistema esperando, que es la función funcionando, pero en
+pantalla se lee como vacío— y termina con el tutor bloqueado por una interrupción.
+
+Para la toma nueva: dejarle terminar antes de hablar, una pausa larga deliberada de cuatro o
+cinco segundos, alguna equivocación que provoque una corrección, y cuatro o cinco intercambios
+en minuto y medio.
+
+Se graba con **⌘⇧5 → cuarto icono (pantalla entera) → Opciones → Micrófono: Dispositivo
+agregado**. El encuadre no importa: el montaje recorta el simulador con
+`crop=780:1580:1975:245`.
+
+Después basta con cambiar `CONV_TROZOS` en `montar.py` y volver a lanzarlo.
+
+### Montaje de audio del Mac
+
+Ya configurado y probado. Salida del sistema en **«Dispositivo de salida múltiple»**
+(auriculares + BlackHole) y grabación desde el **«Dispositivo agregado»** (micrófono +
+BlackHole). Si se toca esa configuración, **hay que reiniciar el simulador** o seguirá usando
+el dispositivo anterior.
+
+### Entrega
+
+A **trabajofinal@rackslabs.com**, antes del **17 de septiembre de 2026**. El autor acepta que
+Racks difunda públicamente la memoria: no hay que hacer nada.
