@@ -75,7 +75,9 @@ BLOQUES.insert(3, Bloque("4-diccionario", 131.0, 159.0, TOMAS / "planos-app.mp4"
 
 # La conversación en directo conserva su propio sonido: es la única parte del
 # vídeo donde lo que importa es oír al tutor.
-CONV_DESDE, CONV_HASTA = 155.0, 178.0
+# La conversación entera, desde que Tiago saluda hasta que da con el nombre
+# del mercado. Es el corazón del vídeo: recortarla deja la demostración coja.
+CONV_DESDE, CONV_HASTA = 1.5, 179.0
 #: Punto de la grabación de voz donde termina el bloque que la anuncia.
 CONV_ANCLA = 126.0
 
