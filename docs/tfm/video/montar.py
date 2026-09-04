@@ -75,9 +75,12 @@ BLOQUES.insert(3, Bloque("4-diccionario", 131.0, 159.0, TOMAS / "planos-app.mp4"
 
 # La conversación en directo conserva su propio sonido: es la única parte del
 # vídeo donde lo que importa es oír al tutor.
-# La conversación entera, desde que Tiago saluda hasta que da con el nombre
-# del mercado. Es el corazón del vídeo: recortarla deja la demostración coja.
-CONV_DESDE, CONV_HASTA = 1.5, 179.0
+# La conversación va en dos trozos. El primero enseña que la cosa funciona:
+# el saludo del tutor y dos preguntas con sus respuestas. El segundo es el
+# momento que la voz anuncia, cuando el alumno se queda callado buscando una
+# palabra y el tutor espera en vez de cortarle.
+CONV_TROZOS = [(1.5, 68.0), (148.0, 179.0)]
+
 #: Punto de la grabación de voz donde termina el bloque que la anuncia.
 CONV_ANCLA = 126.0
 
@@ -143,18 +146,19 @@ def main() -> None:
 
         # La conversación en directo se intercala tras el bloque que la anuncia.
         if bloque.nombre == "3-presenta":
-            conv = TRABAJO / "conversacion.mp4"
-            corre([
-                "ffmpeg", "-y", "-ss", str(CONV_DESDE), "-i", str(CONVERSACION),
-                "-t", str(CONV_HASTA - CONV_DESDE),
-                "-vf", RECORTE + "," + TELEFONO,
-                "-af", "pan=mono|c0=c0,loudnorm=I=-18:TP=-2",
-                "-c:v", "h264_videotoolbox", "-b:v", "6M", "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "1",
-                str(conv),
-            ])
-            piezas.append(conv)
-            print(f"  conversación en directo: {CONV_HASTA - CONV_DESDE:.1f}s")
+            for i, (desde, hasta) in enumerate(CONV_TROZOS, start=1):
+                conv = TRABAJO / f"conversacion-{i}.mp4"
+                corre([
+                    "ffmpeg", "-y", "-ss", str(desde), "-i", str(CONVERSACION),
+                    "-t", str(hasta - desde),
+                    "-vf", RECORTE + "," + TELEFONO,
+                    "-af", "pan=mono|c0=c0,loudnorm=I=-18:TP=-2",
+                    "-c:v", "h264_videotoolbox", "-b:v", "6M", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "1",
+                    str(conv),
+                ])
+                piezas.append(conv)
+                print(f"  conversación {i}: {hasta - desde:.1f}s")
 
     print("Uniendo la imagen…")
     lista = TRABAJO / "piezas.txt"
@@ -172,19 +176,22 @@ def main() -> None:
         if b.voz_desde < CONV_ANCLA
     )
     voz_a, voz_b = TRABAJO / "voz-a.m4a", TRABAJO / "voz-b.m4a"
-    conv_a = TRABAJO / "conv-a.m4a"
     norma = "loudnorm=I=-18:TP=-2,aformat=sample_rates=48000:channel_layouts=mono"
 
     corre(["ffmpeg", "-y", "-ss", "6.5", "-to", str(CONV_ANCLA),
            "-i", str(VOZ), "-af", norma, "-c:a", "aac", "-b:a", "192k", str(voz_a)])
     corre(["ffmpeg", "-y", "-ss", str(CONV_ANCLA + 5.0),
            "-i", str(VOZ), "-af", norma, "-c:a", "aac", "-b:a", "192k", str(voz_b)])
-    corre(["ffmpeg", "-y", "-i", str(TRABAJO / "conversacion.mp4"),
-           "-vn", "-c:a", "aac", "-b:a", "192k", str(conv_a)])
+    nombres_conv = []
+    for i in range(1, len(CONV_TROZOS) + 1):
+        pista = TRABAJO / f"conv-{i}.m4a"
+        corre(["ffmpeg", "-y", "-i", str(TRABAJO / f"conversacion-{i}.mp4"),
+               "-vn", "-c:a", "aac", "-b:a", "192k", str(pista)])
+        nombres_conv.append(pista.name)
 
     lista_audio = TRABAJO / "audio.txt"
     lista_audio.write_text("".join(
-        f"file '{n}'\n" for n in ("voz-a.m4a", "conv-a.m4a", "voz-b.m4a")
+        f"file '{n}'\n" for n in ["voz-a.m4a", *nombres_conv, "voz-b.m4a"]
     ))
     banda = TRABAJO / "banda.m4a"
     corre(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista_audio),
