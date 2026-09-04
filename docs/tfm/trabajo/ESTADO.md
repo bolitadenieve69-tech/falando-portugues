@@ -1,4 +1,4 @@
-# Estado del trabajo final — 31 de agosto de 2026
+# Estado del trabajo final — 4 de septiembre de 2026
 
 ## Entrega
 
@@ -20,14 +20,14 @@ que hacer nada. La propiedad del proyecto (app y código) sigue siendo suya en c
 | 1. Identificación del problema | Escrito |
 | 2. Diseño de la solución con IA | Escrito |
 | 3. Implementación y validación | Escrito, con las cifras definitivas |
-| 4. Vinculación con competencias | **Escrito, pendiente de recortar a las aulas cursadas** |
+| 4. Vinculación con competencias | Escrito |
 | 5. Conclusiones y proyección futura | Escrito |
 
 Los cinco están en `docs/tfm/`, redactados en primera persona. Los datos en bruto de los que
 salen las cifras están en `docs/tfm/datos/`.
 
-**Guion del vídeo:** `docs/tfm/guion-video.md`, con ocho escenas, tiempos y qué decir en cada
-una. **El vídeo no está grabado.**
+El documento montado para enviar está en `entrega/memoria-falando-portugues.md`; se regenera
+con `python3 docs/tfm/montar_memoria.py` cada vez que se retoca un apartado.
 
 ## Cifras de validación
 
@@ -43,23 +43,14 @@ Reproducibles con `backend/scripts/latency_report.py` y `backend/scripts/turn_re
 
 ## Estado técnico
 
-- **293 pruebas automáticas**: 198 del servidor, 95 de la aplicación. Todas en verde.
+- **297 pruebas automáticas**: 202 del servidor, 95 de la aplicación. Todas en verde.
 - Servidor desplegado en `37.27.196.137` con la última versión del backend.
 - Simulador iPhone 17 Pro (`CA411915-1DF1-47BA-ACD9-D8FAD7AF5A26`) con la app instalada y la
   cuenta iniciada. **La identidad va ligada al aparato (IDFV): en otro simulador no existe la
   cuenta.**
 - Metro se arranca con `./node_modules/.bin/expo start --dev-client` (no `npx expo`).
 
-### Desplegado hoy
-
-Toma de turno con detector de voz Silero, guardia contra correcciones inventadas sobre
-transcripciones erróneas, marcador de corrección en español recortado, saludo por nombre,
-traducción de expresiones.
-
-### En el repositorio y **sin desplegar** (sólo afecta a la app, lo recarga Metro)
-
-Nada pendiente en el servidor. Los cambios de app de la última tanda (diccionario visible,
-resumen del historial, crédito con el emblema de cristal) están en `main`.
+Nada pendiente de desplegar: servidor y repositorio van a la par.
 
 ## Lo que quedó abierto
 
