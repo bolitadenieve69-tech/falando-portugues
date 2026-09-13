@@ -577,6 +577,13 @@ mientras no les asigne identificadores de voz reales y no revise los prompts con
 nativos. Las pruebas verifican que los tres comparten las mismas claves de tema y de nivel que
 el portugués, así que activarlos consiste en rellenar datos, no en reescribir lógica.
 
+Hay una decisión que el código no resuelve y que conviene dejar advertida: el nombre.
+«Falando Português» nombra bien la versión portuguesa, pero no sirve para una plataforma
+que enseñe cuatro idiomas. Cuando llegue ese momento, la aplicación necesitará un nombre
+genérico propio, y cada idioma conservará el suyo en su propia lengua: Falando Português,
+Parlant Français, Parlando Italiano, Speaking English. Es un cambio de marca, no de
+arquitectura, y por eso lo dejo aquí y no en el código.
+
 ### Validación con usuarios reales
 
 Es la limitación principal del trabajo y prefiero decirlo sin rodeos: **lo he validado con un

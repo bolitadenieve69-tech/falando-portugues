@@ -54,14 +54,22 @@ class Bloque:
     recortar: bool = False
     #: Cuando el plano dura menos que la voz, se ralentiza para cubrirla.
     estirar: bool = True
+    #: Velocidad de reproducción. Por encima de 1 el plano se acelera y, si
+    #: sigue sin llegar, se repite en ida y vuelta (bajar y volver a subir).
+    ritmo: float = 1.0
 
     @property
     def duracion(self) -> float:
         return round(self.voz_hasta - self.voz_desde, 3)
 
 
+#: Tarjeta muda con el icono y el nombre, antes de que empiece la voz.
+PORTADA = Bloque("0-portada", 0.0, 6.0, TARJETAS / "portada.png", es_imagen=True)
+
 BLOQUES = [
-    Bloque("1-que-es", 6.5, 58.0, TOMAS / "planos-portada.mp4"),
+    # El primer recorrido por la portada va rápido y en ida y vuelta: a
+    # velocidad normal se hacía largo.
+    Bloque("1-que-es", 6.5, 58.0, TOMAS / "planos-portada.mp4", ritmo=1.5),
     Bloque("2-nivel-tema-idioma", 58.0, 99.5, TOMAS / "planos-portada.mp4"),
     Bloque("3-presenta", 99.5, 126.0, TOMAS / "apoyo-arranque-app.mp4"),
     Bloque("5-arquitectura", 159.0, 216.0, TARJETAS / "arquitectura.png", es_imagen=True),
@@ -80,7 +88,16 @@ BLOQUES.insert(3, Bloque("4-diccionario", 131.0, 159.0, TOMAS / "planos-app.mp4"
 # continuación, las dos cosas que la voz anuncia: el alumno se queda callado
 # cinco segundos y el tutor espera (76-84 s), y acto seguido corrige la frase
 # en su recuadro (84-101 s). Los tiempos salen del registro del servidor.
-CONV_TROZOS = [(1.0, 102.5)]
+# Empieza en 3,2 s, pasado el ruido de arrancar la grabación; el saludo suena
+# en 4,7 s.
+CONV_TROZOS = [(3.2, 102.5)]
+#: Fundido de entrada del sonido de la conversación, para que no entre de golpe.
+CONV_FUNDIDO_SECS = 0.6
+
+# Durante la toma sonaron dos avisos del teléfono (72,1 s y 76,4 s) que resuenan
+# unos segundos en dos notas fijas. Se quitan con dos rechazos muy estrechos,
+# sólo en ese tramo, para no tocar la voz. Frecuencias medidas sobre la toma.
+CONV_AVISOS = {"desde": 71.8, "hasta": 81.5, "notas_hz": (2114, 5796)}
 
 #: Punto de la grabación de voz donde termina el bloque que la anuncia.
 CONV_ANCLA = 126.0
@@ -117,6 +134,10 @@ def plano_de(bloque: Bloque, destino: Path) -> None:
         ])
         return
 
+    if bloque.ritmo != 1.0:
+        ida_y_vuelta(bloque, destino, filtros)
+        return
+
     disponible = duracion(bloque.fuente) - bloque.desde
     velocidad = 1.0
     if bloque.estirar and disponible > 0 and disponible < bloque.duracion:
@@ -132,13 +153,32 @@ def plano_de(bloque: Bloque, destino: Path) -> None:
     ])
 
 
+def ida_y_vuelta(bloque: Bloque, destino: Path, filtros: str) -> None:
+    """Acelera el plano y, si no llega, lo repite hacia atrás hasta cubrir la voz."""
+    pasada = f"setpts=PTS/{bloque.ritmo},{filtros}"
+    dura_pasada = (duracion(bloque.fuente) - bloque.desde) / bloque.ritmo
+    if dura_pasada >= bloque.duracion:
+        cadena = pasada
+    else:
+        cadena = f"{pasada},split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0"
+    corre([
+        "ffmpeg", "-y", "-ss", str(bloque.desde), "-i", str(bloque.fuente),
+        "-filter_complex", cadena, "-t", str(bloque.duracion),
+        "-c:v", "h264_videotoolbox", "-b:v", "6M", "-pix_fmt", "yuv420p",
+        "-an", str(destino),
+    ])
+
+
 def main() -> None:
     TRABAJO.mkdir(exist_ok=True)
     for viejo in TRABAJO.glob("*.mp4"):
         viejo.unlink()
 
     print("Cortando la imagen de cada bloque…")
-    piezas: list[Path] = []
+    portada = TRABAJO / f"{PORTADA.nombre}.mp4"
+    plano_de(PORTADA, portada)
+    piezas: list[Path] = [portada]
+    print(f"  {PORTADA.nombre}: {PORTADA.duracion:.1f}s")
     for bloque in sorted(BLOQUES, key=lambda b: b.voz_desde):
         destino = TRABAJO / f"{bloque.nombre}.mp4"
         plano_de(bloque, destino)
@@ -149,11 +189,19 @@ def main() -> None:
         if bloque.nombre == "3-presenta":
             for i, (desde, hasta) in enumerate(CONV_TROZOS, start=1):
                 conv = TRABAJO / f"conversacion-{i}.mp4"
+                # Los tiempos del filtro van relativos al trozo, no a la toma.
+                tramo = (f"between(t,{CONV_AVISOS['desde'] - desde:.2f},"
+                         f"{CONV_AVISOS['hasta'] - desde:.2f})")
+                rechazos = ",".join(
+                    f"equalizer=f={hz}:t=h:w=40:g=-40:enable='{tramo}'"
+                    for hz in CONV_AVISOS["notas_hz"]
+                )
                 corre([
                     "ffmpeg", "-y", "-ss", str(desde), "-i", str(CONVERSACION),
                     "-t", str(hasta - desde),
                     "-vf", RECORTE + "," + TELEFONO,
-                    "-af", "pan=mono|c0=c0,loudnorm=I=-18:TP=-2",
+                    "-af", f"pan=mono|c0=c0,{rechazos},loudnorm=I=-18:TP=-2,"
+                           f"afade=t=in:d={CONV_FUNDIDO_SECS}",
                     "-c:v", "h264_videotoolbox", "-b:v", "6M", "-pix_fmt", "yuv420p",
                     "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "1",
                     str(conv),
@@ -179,6 +227,9 @@ def main() -> None:
     voz_a, voz_b = TRABAJO / "voz-a.m4a", TRABAJO / "voz-b.m4a"
     norma = "loudnorm=I=-18:TP=-2,aformat=sample_rates=48000:channel_layouts=mono"
 
+    silencio = TRABAJO / "silencio.m4a"
+    corre(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono",
+           "-t", str(PORTADA.duracion), "-c:a", "aac", "-b:a", "192k", str(silencio)])
     corre(["ffmpeg", "-y", "-ss", "6.5", "-to", str(CONV_ANCLA),
            "-i", str(VOZ), "-af", norma, "-c:a", "aac", "-b:a", "192k", str(voz_a)])
     corre(["ffmpeg", "-y", "-ss", str(CONV_ANCLA + 5.0),
@@ -192,7 +243,7 @@ def main() -> None:
 
     lista_audio = TRABAJO / "audio.txt"
     lista_audio.write_text("".join(
-        f"file '{n}'\n" for n in ["voz-a.m4a", *nombres_conv, "voz-b.m4a"]
+        f"file '{n}'\n" for n in ["silencio.m4a", "voz-a.m4a", *nombres_conv, "voz-b.m4a"]
     ))
     banda = TRABAJO / "banda.m4a"
     corre(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista_audio),

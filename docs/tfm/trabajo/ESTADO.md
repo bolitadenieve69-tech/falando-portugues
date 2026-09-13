@@ -78,14 +78,20 @@ usuario dejarlo así o subirlo a ~130 px.
 **La memoria está terminada.** Los cinco apartados, montados en un solo documento en
 `entrega/memoria-falando-portugues.md`.
 
-**El vídeo está terminado**: `video/falando-portugues-demo.mp4`, 7 min 21 s. Voz grabada aparte
+**El vídeo está terminado**: `video/falando-portugues-demo.mp4`, 7 min 25 s. Portada con el icono, voz grabada aparte
 por el autor, planos del simulador, tarjetas dibujadas para los bloques técnicos y la
 conversación con su propio sonido. Se rehace con `python3 docs/tfm/video/montar.py`.
 
 La conversación con el tutor se regrabó el 13 de septiembre (toma `9.36.25`, 3 min 08 s) y va
 en un solo trozo seguido de 101 s: saludo, tres preguntas con respuesta, una pausa deliberada de
 5,6 s en la que el tutor espera, y la corrección en su recuadro. Los tiempos se cruzaron con el
-registro del servidor (`Silence in ms: 5018`, cierre por paciencia B1).
+registro del servidor (`Silence in ms: 5018`, cierre por paciencia B1). Dos avisos del
+teléfono que se colaron en la toma (72 s y 76 s) se quitan en el montaje con dos rechazos
+estrechos (2.114 y 5.796 Hz) sólo en ese tramo.
+
+Revisión del autor (13-09): primer scroll más rápido y en ida y vuelta, ruido del arranque de
+la conversación fuera, portada con icono y nombre. La advertencia sobre el nombre de la
+plataforma multilingüe va en la portada del vídeo y en el apartado 5.
 
 **Servidor al día**, con el arreglo del bloqueo desplegado y verificado (paciencia 5,0 s, red
 de seguridad 7,0 s).

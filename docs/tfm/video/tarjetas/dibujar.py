@@ -54,6 +54,36 @@ def titulo(d, texto):
     centrado(d, 90, texto.upper(), fuente(40, negrita=True), TENUE)
 
 
+# ── Portada ──────────────────────────────────────────────────────────────────
+
+ICONO = AQUI.parent.parent.parent.parent / "assets" / "icon.png"
+
+
+def portada():
+    """Icono y nombre de la aplicación, y quién la presenta."""
+    img, d = lienzo()
+
+    icono = Image.open(ICONO).convert("RGBA").resize((300, 300), Image.LANCZOS)
+    mascara = Image.new("L", icono.size, 0)
+    ImageDraw.Draw(mascara).rounded_rectangle([0, 0, 299, 299], radius=66, fill=255)
+    img.paste(icono, ((W - 300) // 2, 150), mascara)
+
+    centrado(d, 500, "Falando Português", fuente(88, negrita=True), TEXTO)
+    centrado(d, 618, "Práctica oral de portugués europeo con un tutor de IA en tiempo real",
+             fuente(32), TENUE)
+
+    centrado(d, 760, "Trabajo final · Especialista en Inteligencia Artificial · Racks Academy",
+             fuente(26), TENUE)
+    centrado(d, 806, "Ángel Guerra Iglesias · septiembre de 2026", fuente(26), ORO)
+
+    f_nota = fuente(21)
+    centrado(d, 950, "«Falando Português» es el nombre de la versión portuguesa. Si la plataforma "
+             "pasa a ser multilingüe, tendrá un nombre propio", f_nota, TENUE)
+    centrado(d, 984, "y cada idioma el suyo: Falando Português · Parlant Français · "
+             "Parlando Italiano · Speaking English.", f_nota, TENUE)
+    img.save(AQUI / "portada.png")
+
+
 # ── Arquitectura ─────────────────────────────────────────────────────────────
 
 def arquitectura():
@@ -179,6 +209,7 @@ def intentos():
 
 
 if __name__ == "__main__":
+    portada()
     arquitectura()
     mediciones()
     intentos()
