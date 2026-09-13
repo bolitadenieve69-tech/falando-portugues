@@ -1,4 +1,14 @@
-# Estado del trabajo final — 13 de septiembre de 2026
+# Estado del trabajo final — ENTREGADO el 13 de septiembre de 2026
+
+Enviado por correo a trabajofinal@rackslabs.com el 13-09-2026, cuatro días antes del plazo:
+memoria en PDF adjunta, vídeo y copia de la memoria en una carpeta de Drive compartida con
+enlace público, y repositorio hecho público ese mismo día. Pendiente sólo la calificación
+(APTO / NO APTO); si fuera NO APTO, Racks pide correcciones concretas.
+
+Carpeta de Drive: https://drive.google.com/drive/folders/1pPCM6BhMSgkB69r_n05lVFD9tihnkMyH
+
+---
+
 
 ## Entrega
 
@@ -98,7 +108,7 @@ de seguridad 7,0 s).
 
 ### Lo que queda
 
-Revisar el vídeo y la memoria una última vez y **enviarlos**. La memoria está también en PDF (`entrega/memoria-falando-portugues.pdf`, 17 páginas).
+Nada: entregado. Esperar la calificación. La memoria está también en PDF (`entrega/memoria-falando-portugues.pdf`, 17 páginas).
 
 ### Trampas de la grabación (por si hay que repetirla)
 
