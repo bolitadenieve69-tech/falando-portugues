@@ -3,6 +3,7 @@
 ## Trabajo Final — Especialista en Inteligencia Artificial
 
 **Autor:** Ángel Guerra Iglesias
+
 **Racks Academy** · Septiembre de 2026
 
 ---
@@ -11,7 +12,7 @@ Aplicación móvil para practicar portugués europeo hablado con un tutor de int
 artificial, en tiempo real y a cualquier hora.
 
 **Código fuente:** el proyecto es una aplicación React Native con un servidor Python que
-orquesta un flujo de voz en tiempo real. Se detalla en los apartados 2 y 3, y cuenta con 293
+orquesta un flujo de voz en tiempo real. Se detalla en los apartados 2 y 3, y cuenta con 318
 pruebas automáticas.
 
 **Vídeo demostrativo:** se adjunta con esta memoria.
@@ -25,8 +26,6 @@ pruebas automáticas.
 3. Implementación y validación
 4. Vinculación con competencias adquiridas
 5. Conclusiones y proyección futura
-
----
 
 ---
 
@@ -225,7 +224,7 @@ una sola sesión, todos de configuración, versiones o permisos, ninguno de arqu
 ser medir, encontrar el fallo, repararlo y volver a medir. Los tres intentos que costó arreglar
 la toma de turno, que cuento más abajo, son el mejor ejemplo de para qué sirve esto.
 
-El proyecto tiene hoy **293 pruebas automáticas** (198 del servidor y 95 de la aplicación) que
+El proyecto tiene hoy **318 pruebas automáticas** (205 del servidor y 113 de la aplicación) que
 se ejecutan en integración continua con cada cambio.
 
 ## Métricas de éxito
@@ -365,6 +364,7 @@ habría encontrado sin hablar con la aplicación.
 | Marca de corrección escrita en español | El sintetizador la leyó en voz alta | Corregido en dos capas |
 | El tutor preguntaba el nombre en cada sesión | Repetición y falta de continuidad | Corregido |
 | Una conexión caída dejaba su error sobre la sesión siguiente | Aviso de error sobre una sesión correcta | Corregido |
+| Interrumpir al tutor a media respuesta lo dejaba mudo: el turno no se cerraba nunca | La conversación se paraba sin aviso | Corregido: una red de seguridad cierra el turno pasados 2 s más que la paciencia del nivel |
 
 ## Alcance de la validación
 
@@ -412,7 +412,7 @@ turno de palabra. Incluye control de concurrencia para que dos peticiones al mod
 solapen cuando el usuario interrumpe.
 
 **Aula Developers.** Construcción completa del sistema: servidor en Python con FastAPI,
-aplicación móvil en React Native con Expo, **293 pruebas automáticas**, control de versiones
+aplicación móvil en React Native con Expo, **318 pruebas automáticas**, control de versiones
 con Git y revisión de código.
 
 **Aula Fundamentos Técnicos.** Arquitectura del sistema y sus límites, diseño de la API REST,

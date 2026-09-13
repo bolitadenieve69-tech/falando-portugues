@@ -43,7 +43,7 @@ Reproducibles con `backend/scripts/latency_report.py` y `backend/scripts/turn_re
 
 ## Estado técnico
 
-- **297 pruebas automáticas**: 202 del servidor, 95 de la aplicación. Todas en verde.
+- **318 pruebas automáticas**: 205 del servidor, 113 de la aplicación. Todas en verde (comprobado el 13-09).
 - Servidor desplegado en `37.27.196.137` con la última versión del backend.
 - Simulador iPhone 17 Pro (`CA411915-1DF1-47BA-ACD9-D8FAD7AF5A26`) con la app instalada y la
   cuenta iniciada. **La identidad va ligada al aparato (IDFV): en otro simulador no existe la
@@ -98,7 +98,7 @@ de seguridad 7,0 s).
 
 ### Lo que queda
 
-Revisar el vídeo y la memoria una última vez y **enviarlos**.
+Revisar el vídeo y la memoria una última vez y **enviarlos**. La memoria está también en PDF (`entrega/memoria-falando-portugues.pdf`, 17 páginas).
 
 ### Trampas de la grabación (por si hay que repetirla)
 

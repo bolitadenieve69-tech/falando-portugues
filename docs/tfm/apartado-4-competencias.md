@@ -35,7 +35,7 @@ turno de palabra. Incluye control de concurrencia para que dos peticiones al mod
 solapen cuando el usuario interrumpe.
 
 **Aula Developers.** Construcción completa del sistema: servidor en Python con FastAPI,
-aplicación móvil en React Native con Expo, **293 pruebas automáticas**, control de versiones
+aplicación móvil en React Native con Expo, **318 pruebas automáticas**, control de versiones
 con Git y revisión de código.
 
 **Aula Fundamentos Técnicos.** Arquitectura del sistema y sus límites, diseño de la API REST,

@@ -32,6 +32,7 @@ PORTADA = """# Falando Português
 ## Trabajo Final — Especialista en Inteligencia Artificial
 
 **Autor:** Ángel Guerra Iglesias
+
 **Racks Academy** · Septiembre de 2026
 
 ---
@@ -40,7 +41,7 @@ Aplicación móvil para practicar portugués europeo hablado con un tutor de int
 artificial, en tiempo real y a cualquier hora.
 
 **Código fuente:** el proyecto es una aplicación React Native con un servidor Python que
-orquesta un flujo de voz en tiempo real. Se detalla en los apartados 2 y 3, y cuenta con 293
+orquesta un flujo de voz en tiempo real. Se detalla en los apartados 2 y 3, y cuenta con 318
 pruebas automáticas.
 
 **Vídeo demostrativo:** se adjunta con esta memoria.
@@ -54,8 +55,6 @@ pruebas automáticas.
 3. Implementación y validación
 4. Vinculación con competencias adquiridas
 5. Conclusiones y proyección futura
-
----
 """
 
 # Los avisos en cita al principio de un apartado son notas de trabajo para el
