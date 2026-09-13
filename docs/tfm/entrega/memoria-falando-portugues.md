@@ -11,9 +11,10 @@
 Aplicación móvil para practicar portugués europeo hablado con un tutor de inteligencia
 artificial, en tiempo real y a cualquier hora.
 
-**Código fuente:** el proyecto es una aplicación React Native con un servidor Python que
-orquesta un flujo de voz en tiempo real. Se detalla en los apartados 2 y 3, y cuenta con 318
-pruebas automáticas.
+**Código fuente:** <https://github.com/bolitadenieve69-tech/falando-portugues>. Aplicación
+React Native con un servidor Python que orquesta un flujo de voz en tiempo real. Se detalla en
+los apartados 2 y 3, y cuenta con 318 pruebas automáticas. Los datos en bruto de las
+mediciones y los scripts que los procesan están en el propio repositorio.
 
 **Vídeo demostrativo:** se adjunta con esta memoria.
 
