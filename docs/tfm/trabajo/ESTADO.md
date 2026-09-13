@@ -132,3 +132,16 @@ el dispositivo anterior.
 
 A **trabajofinal@rackslabs.com**, antes del **17 de septiembre de 2026**. El autor acepta que
 Racks difunda públicamente la memoria: no hay que hacer nada.
+
+## Horas invertidas (calculadas el día de la entrega)
+
+Sumando la actividad de las sesiones de trabajo con Claude (tramos con mensajes seguidos, sin
+contar pausas de más de 20 minutos): **unas 104 horas en 69 días**, del 14 de abril al 13 de
+septiembre de 2026. Por meses: abril 19,8 · mayo 20,3 · junio 39,5 · julio 6,2 · agosto 12,0 ·
+septiembre 6,3. Día más largo, el 8 de junio (6,7 h).
+
+No incluye el trabajo en solitario del autor (conversaciones con el tutor, despliegues,
+grabaciones, revisión de la memoria). **Estimación total: entre 130 y 150 horas.**
+
+Salida: 119 commits, 10.900 líneas de código y 5.100 de pruebas, memoria de 5.700 palabras,
+vídeo de 7 min 25 s.
