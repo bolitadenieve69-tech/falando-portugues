@@ -23,11 +23,12 @@ TRABAJO = AQUI / "trabajo"
 SALIDA = AQUI / "falando-portugues-demo.mp4"
 
 VOZ = TOMAS / "voz.m4a.aifc"
-CONVERSACION = TOMAS / "Grabación de pantalla 2026-09-04 a las 12.57.11.mov"
+CONVERSACION = TOMAS / "Grabación de pantalla 2026-09-13 a las 9.36.25.mov"
 
-# El simulador ocupa este rectángulo dentro de la captura de pantalla completa.
-# Recortarlo quita el escritorio y deja el teléfono llenando el cuadro.
-RECORTE = "crop=780:1580:1975:245"
+# El teléfono (con su marco) ocupa este rectángulo dentro de la captura de
+# pantalla completa. Recortarlo quita el escritorio y deja el teléfono llenando
+# el cuadro. Se midió sobre un fotograma de la toma; si se regraba, medir otra vez.
+RECORTE = "crop=736:1516:2020:207"
 
 ANCHO, ALTO, FPS = 1920, 1080, 30
 
@@ -75,11 +76,11 @@ BLOQUES.insert(3, Bloque("4-diccionario", 131.0, 159.0, TOMAS / "planos-app.mp4"
 
 # La conversación en directo conserva su propio sonido: es la única parte del
 # vídeo donde lo que importa es oír al tutor.
-# La conversación va en dos trozos. El primero enseña que la cosa funciona:
-# el saludo del tutor y dos preguntas con sus respuestas. El segundo es el
-# momento que la voz anuncia, cuando el alumno se queda callado buscando una
-# palabra y el tutor espera en vez de cortarle.
-CONV_TROZOS = [(1.5, 68.0), (148.0, 179.0)]
+# Un solo trozo seguido: el saludo, tres preguntas con sus respuestas y, a
+# continuación, las dos cosas que la voz anuncia: el alumno se queda callado
+# cinco segundos y el tutor espera (76-84 s), y acto seguido corrige la frase
+# en su recuadro (84-101 s). Los tiempos salen del registro del servidor.
+CONV_TROZOS = [(1.0, 102.5)]
 
 #: Punto de la grabación de voz donde termina el bloque que la anuncia.
 CONV_ANCLA = 126.0
@@ -169,7 +170,7 @@ def main() -> None:
 
     print("Pegando la voz…")
     # La voz y la imagen no comparten reloj: la conversación en directo ocupa
-    # 23 s de vídeo y sólo el silencio que la anuncia en la grabación de voz.
+    # su propio tiempo en el vídeo y sólo el silencio que la anuncia en la voz.
     # Se corta la voz en dos y la conversación va entre medias con su sonido.
     corte_video = sum(
         b.duracion for b in sorted(BLOQUES, key=lambda b: b.voz_desde)

@@ -1,4 +1,4 @@
-# Estado del trabajo final — 4 de septiembre de 2026
+# Estado del trabajo final — 13 de septiembre de 2026
 
 ## Entrega
 
@@ -73,33 +73,37 @@ usuario planteó un rediseño visual completo; se recomendó grabar el vídeo an
 **Tamaño del emblema.** A 96 px el anillo de texto del logo apenas se lee. Queda a decisión del
 usuario dejarlo así o subirlo a ~130 px.
 
-## Estado al 4 de septiembre
+## Estado al 13 de septiembre
 
 **La memoria está terminada.** Los cinco apartados, montados en un solo documento en
 `entrega/memoria-falando-portugues.md`.
 
-**El vídeo está montado**: `video/falando-portugues-demo.mp4`, 7 min 17 s. Voz grabada aparte
+**El vídeo está terminado**: `video/falando-portugues-demo.mp4`, 7 min 21 s. Voz grabada aparte
 por el autor, planos del simulador, tarjetas dibujadas para los bloques técnicos y la
 conversación con su propio sonido. Se rehace con `python3 docs/tfm/video/montar.py`.
+
+La conversación con el tutor se regrabó el 13 de septiembre (toma `9.36.25`, 3 min 08 s) y va
+en un solo trozo seguido de 101 s: saludo, tres preguntas con respuesta, una pausa deliberada de
+5,6 s en la que el tutor espera, y la corrección en su recuadro. Los tiempos se cruzaron con el
+registro del servidor (`Silence in ms: 5018`, cierre por paciencia B1).
 
 **Servidor al día**, con el arreglo del bloqueo desplegado y verificado (paciencia 5,0 s, red
 de seguridad 7,0 s).
 
-### Lo único pendiente
+### Lo que queda
 
-**Regrabar la conversación con el tutor.** La toma actual tiene seis segundos de silencio
-entre los segundos 32 y 41 —el sistema esperando, que es la función funcionando, pero en
-pantalla se lee como vacío— y termina con el tutor bloqueado por una interrupción.
+Revisar el vídeo y la memoria una última vez y **enviarlos**.
 
-Para la toma nueva: dejarle terminar antes de hablar, una pausa larga deliberada de cuatro o
-cinco segundos, alguna equivocación que provoque una corrección, y cuatro o cinco intercambios
-en minuto y medio.
+### Trampas de la grabación (por si hay que repetirla)
 
-Se graba con **⌘⇧5 → cuarto icono (pantalla entera) → Opciones → Micrófono: Dispositivo
-agregado**. El encuadre no importa: el montaje recorta el simulador con
-`crop=780:1580:1975:245`.
-
-Después basta con cambiar `CONV_TROZOS` en `montar.py` y volver a lanzarlo.
+- Al enchufar los auriculares, macOS cambia la salida a «Auriculares externos» y BlackHole
+  deja de recibir al tutor. Devolverla a «Dispositivo de salida múltiple»
+  (`SwitchAudioSource -s "Dispositivo de salida múltiple" -t output`) y **reiniciar el
+  simulador**.
+- Tras cambiar dispositivos de audio, la app puede cerrarse al abrir la primera conversación
+  (`AURemoteIO::Initialize` · RPC timeout, fallo del simulador). Volver a lanzarla basta.
+- El recorte del teléfono en `montar.py` (`RECORTE`) se midió sobre un fotograma de la toma:
+  si la ventana cambia de sitio, medirlo otra vez.
 
 ### Montaje de audio del Mac
 
