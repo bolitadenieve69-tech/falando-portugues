@@ -7,6 +7,11 @@ enlace público, y repositorio hecho público ese mismo día. Pendiente sólo la
 
 Carpeta de Drive: https://drive.google.com/drive/folders/1pPCM6BhMSgkB69r_n05lVFD9tihnkMyH
 
+**16-09-2026:** Racks contestó que no veían la memoria. El PDF no había salido adjunto el
+día 13 (el mensaje llevaba también el vídeo y pasaba de 25 MB). Reenviada el 16 a las 16:25
+en el mismo hilo: PDF adjunto (277 KB) más el enlace directo al PDF y a la carpeta de Drive.
+Lección: el vídeo nunca se adjunta por correo; va por Drive.
+
 ---
 
 
